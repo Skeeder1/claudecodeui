@@ -24,8 +24,6 @@ export type MessageKind =
   | 'error'
   | 'complete'
   | 'status'
-  | 'permission_request'
-  | 'permission_cancelled'
   | 'session_created'
   | 'interactive_prompt'
   | 'task_notification';
@@ -176,7 +174,7 @@ function computeMerged(server: NormalizedMessage[], realtime: NormalizedMessage[
     if (serverIds.has(m.id)) return false;
     // Optimistic user rows use `local_*` ids; once the same text exists on the
     // server-backed copy, drop the realtime echo to avoid duplicate bubbles.
-    if (m.id.startsWith('local_')) {
+    if (typeof m.id === 'string' && m.id.startsWith('local_')) {
       const fp = userTextFingerprint(m);
       if (fp && serverUserTexts.has(fp)) return false;
     }

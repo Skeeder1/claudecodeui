@@ -33,6 +33,7 @@ type UseShellConnectionResult = {
   closeSocket: () => void;
   connectToShell: () => void;
   disconnectFromShell: () => void;
+  disconnectFromShellSoft: () => void;
 };
 
 export function useShellConnection({
@@ -54,6 +55,15 @@ export function useShellConnection({
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const connectingRef = useRef(false);
+  const manuallyDisconnectedRef = useRef(false);
+  const heartbeatRef = useRef<number | null>(null);
+
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatRef.current !== null) {
+      window.clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  }, []);
 
   const handleProcessCompletion = useCallback(
     (output: string) => {
@@ -132,6 +142,13 @@ export function useShellConnection({
           connectingRef.current = false;
           setAuthUrl('');
 
+          clearHeartbeat();
+          heartbeatRef.current = window.setInterval(() => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              sendSocketMessage(wsRef.current, { type: 'ping' });
+            }
+          }, 20000);
+
           window.setTimeout(() => {
             const currentTerminal = terminalRef.current;
             const currentFitAddon = fitAddonRef.current;
@@ -162,6 +179,9 @@ export function useShellConnection({
         };
 
         socket.onclose = () => {
+          clearHeartbeat();
+          // Skip if a newer socket already replaced this one.
+          if (wsRef.current !== null && wsRef.current !== socket) return;
           setIsConnected(false);
           setIsConnecting(false);
           connectingRef.current = false;
@@ -169,6 +189,7 @@ export function useShellConnection({
         };
 
         socket.onerror = () => {
+          clearHeartbeat();
           setIsConnected(false);
           setIsConnecting(false);
           connectingRef.current = false;
@@ -180,6 +201,7 @@ export function useShellConnection({
       }
     },
     [
+      clearHeartbeat,
       clearTerminalScreen,
       fitAddonRef,
       handleSocketMessage,
@@ -200,22 +222,38 @@ export function useShellConnection({
       return;
     }
 
+    manuallyDisconnectedRef.current = false;
     connectingRef.current = true;
     setIsConnecting(true);
     connectWebSocket(true);
   }, [connectWebSocket, isConnected, isConnecting, isInitialized]);
 
   const disconnectFromShell = useCallback(() => {
+    clearHeartbeat();
+    manuallyDisconnectedRef.current = true;
+    sendSocketMessage(wsRef.current, { type: 'disconnect' });
     closeSocket();
     clearTerminalScreen();
     setIsConnected(false);
     setIsConnecting(false);
     connectingRef.current = false;
     setAuthUrl('');
-  }, [clearTerminalScreen, closeSocket, setAuthUrl]);
+  }, [clearHeartbeat, clearTerminalScreen, closeSocket, setAuthUrl, wsRef]);
+
+  // Soft variant used by auto-disconnect effects (session change, project deselect, restart).
+  // Does not set manuallyDisconnectedRef so autoConnect can resume for the new context.
+  const disconnectFromShellSoft = useCallback(() => {
+    clearHeartbeat();
+    closeSocket();
+    clearTerminalScreen();
+    setIsConnected(false);
+    setIsConnecting(false);
+    connectingRef.current = false;
+    setAuthUrl('');
+  }, [clearHeartbeat, clearTerminalScreen, closeSocket, setAuthUrl]);
 
   useEffect(() => {
-    if (!autoConnect || !isInitialized || isConnecting || isConnected) {
+    if (!autoConnect || !isInitialized || isConnecting || isConnected || manuallyDisconnectedRef.current) {
       return;
     }
 
@@ -228,5 +266,6 @@ export function useShellConnection({
     closeSocket,
     connectToShell,
     disconnectFromShell,
+    disconnectFromShellSoft,
   };
 }

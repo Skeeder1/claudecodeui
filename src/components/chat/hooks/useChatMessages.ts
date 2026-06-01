@@ -84,7 +84,7 @@ export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMes
         // Build child tools from subagentTools
         const childTools: SubagentChildTool[] = [];
         if (isSubagentContainer && msg.subagentTools && Array.isArray(msg.subagentTools)) {
-          for (const tool of msg.subagentTools as any[]) {
+          for (const tool of msg.subagentTools as SubagentChildTool[]) {
             childTools.push({
               toolId: tool.toolId,
               toolName: tool.toolName,
@@ -99,7 +99,7 @@ export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMes
           ? {
               content: typeof tr.content === 'string' ? tr.content : JSON.stringify(tr.content),
               isError: Boolean(tr.isError),
-              toolUseResult: (tr as any).toolUseResult,
+              toolUseResult: (tr as Record<string, unknown>).toolUseResult,
             }
           : null;
 
@@ -179,13 +179,11 @@ export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMes
         }
         break;
 
-      // stream_end, complete, status, permission_*, session_created
+      // stream_end, complete, status, session_created
       // are control events — not rendered as messages
       case 'stream_end':
       case 'complete':
       case 'status':
-      case 'permission_request':
-      case 'permission_cancelled':
       case 'session_created':
         // Skip — these are handled by useChatRealtimeHandlers
         break;

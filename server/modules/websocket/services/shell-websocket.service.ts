@@ -136,12 +136,13 @@ function buildShellCommand(
     return command;
   }
 
-  const command = initialCommand || 'claude';
+  const claudeCmd = process.env['CLAUDE_CLI_PATH'] || 'claude';
+  const command = initialCommand || claudeCmd;
   if (hasSession && sessionId) {
     if (os.platform() === 'win32') {
-      return `claude --resume "${sessionId}"; if ($LASTEXITCODE -ne 0) { claude }`;
+      return `"${claudeCmd}" --resume "${sessionId}"; if ($LASTEXITCODE -ne 0) { "${claudeCmd}" }`;
     }
-    return `claude --resume "${sessionId}" || claude`;
+    return `"${claudeCmd}" --resume "${sessionId}" || "${claudeCmd}"`;
   }
   return command;
 }
@@ -279,12 +280,17 @@ export function handleShellConnection(
           sessionId,
         });
 
+        // Capture the key as a const so that onData/onExit closures always
+        // reference the session that spawned this PTY, even if a second `init`
+        // message reassigns the outer `ptySessionKey` variable.
+        const capturedPtyKey = ptySessionKey;
+
         shellProcess.onData((chunk) => {
-          if (!ptySessionKey) {
+          if (!capturedPtyKey) {
             return;
           }
 
-          const session = ptySessionsMap.get(ptySessionKey);
+          const session = ptySessionsMap.get(capturedPtyKey);
           if (!session) {
             return;
           }
@@ -356,11 +362,11 @@ export function handleShellConnection(
         });
 
         shellProcess.onExit((exitCode) => {
-          if (!ptySessionKey) {
+          if (!capturedPtyKey) {
             return;
           }
 
-          const session = ptySessionsMap.get(ptySessionKey);
+          const session = ptySessionsMap.get(capturedPtyKey);
           if (session && session.ws && session.ws.readyState === WebSocket.OPEN) {
             session.ws.send(
               JSON.stringify({
@@ -376,7 +382,7 @@ export function handleShellConnection(
             clearTimeout(session.timeoutId);
           }
 
-          ptySessionsMap.delete(ptySessionKey);
+          ptySessionsMap.delete(capturedPtyKey);
           shellProcess = null;
         });
 
@@ -415,6 +421,28 @@ export function handleShellConnection(
         if (shellProcess) {
           shellProcess.resize(readNumber(data.cols, 80), readNumber(data.rows, 24));
         }
+        return;
+      }
+
+      if (data.type === 'ping') {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        }
+        return;
+      }
+
+      if (data.type === 'disconnect') {
+        // Intentional client disconnect: kill PTY immediately instead of waiting for timeout.
+        if (ptySessionKey) {
+          const session = ptySessionsMap.get(ptySessionKey);
+          if (session) {
+            if (session.timeoutId) clearTimeout(session.timeoutId);
+            session.pty.kill();
+            ptySessionsMap.delete(ptySessionKey);
+          }
+          ptySessionKey = null;
+          shellProcess = null;
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -436,7 +464,10 @@ export function handleShellConnection(
     }
 
     const session = ptySessionsMap.get(ptySessionKey);
-    if (!session) {
+    // Guard: session may have been killed by a `disconnect` message, or replaced by
+    // a faster reconnect that already assigned a new ws. Only start the idle timer
+    // if this ws is still the one attached to the session.
+    if (!session || session.ws !== ws) {
       return;
     }
 

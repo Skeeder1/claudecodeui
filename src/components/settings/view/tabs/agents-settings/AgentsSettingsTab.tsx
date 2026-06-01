@@ -11,14 +11,6 @@ import AgentSelectorSection from './sections/AgentSelectorSection';
 export default function AgentsSettingsTab({
   providerAuthStatus,
   onProviderLogin,
-  claudePermissions,
-  onClaudePermissionsChange,
-  cursorPermissions,
-  onCursorPermissionsChange,
-  codexPermissionMode,
-  onCodexPermissionModeChange,
-  geminiPermissionMode,
-  onGeminiPermissionModeChange,
   projects,
 }: AgentsSettingsTabProps) {
   const [selectedAgent, setSelectedAgent] = useState<AgentProvider>('claude');
@@ -84,14 +76,6 @@ export default function AgentsSettingsTab({
           selectedAgent={selectedAgent}
           selectedCategory={selectedCategory}
           agentContextById={agentContextById}
-          claudePermissions={claudePermissions}
-          onClaudePermissionsChange={onClaudePermissionsChange}
-          cursorPermissions={cursorPermissions}
-          onCursorPermissionsChange={onCursorPermissionsChange}
-          codexPermissionMode={codexPermissionMode}
-          onCodexPermissionModeChange={onCodexPermissionModeChange}
-          geminiPermissionMode={geminiPermissionMode}
-          onGeminiPermissionModeChange={onGeminiPermissionModeChange}
           projects={projects}
         />
       </div>
