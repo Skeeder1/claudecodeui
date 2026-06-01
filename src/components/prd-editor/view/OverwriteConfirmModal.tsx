@@ -1,4 +1,5 @@
 import { AlertTriangle, Save } from 'lucide-react';
+import { Dialog, DialogContent } from '../../../shared/view/ui';
 
 type OverwriteConfirmModalProps = {
   isOpen: boolean;
@@ -15,15 +16,9 @@ export default function OverwriteConfirmModal({
   onCancel,
   onConfirm,
 }: OverwriteConfirmModalProps) {
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onCancel} />
-
-      <div className="relative w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent className="w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
         <div className="p-6">
           <div className="mb-4 flex items-center">
             <div className="mr-3 rounded-full bg-yellow-100 p-2 dark:bg-yellow-900">
@@ -54,7 +49,7 @@ export default function OverwriteConfirmModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

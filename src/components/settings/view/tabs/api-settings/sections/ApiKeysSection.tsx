@@ -1,6 +1,7 @@
 import { ExternalLink, Key, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../../../../../shared/view/ui';
+import { formatLocalDate } from '../../../../../../lib/dateTime';
 import type { ApiKeyItem } from '../types';
 
 type ApiKeysSectionProps = {
@@ -81,9 +82,9 @@ export default function ApiKeysSection({
                 <div className="font-medium">{key.key_name}</div>
                 <code className="text-xs text-muted-foreground">{key.api_key}</code>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {t('apiKeys.list.created')} {new Date(key.created_at).toLocaleDateString()}
+                  {t('apiKeys.list.created')} {formatLocalDate(key.created_at)}
                   {key.last_used
-                    ? ` - ${t('apiKeys.list.lastUsed')} ${new Date(key.last_used).toLocaleDateString()}`
+                    ? ` - ${t('apiKeys.list.lastUsed')} ${formatLocalDate(key.last_used)}`
                     : ''}
                 </div>
               </div>

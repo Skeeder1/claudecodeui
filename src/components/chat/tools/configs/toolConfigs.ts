@@ -559,16 +559,15 @@ export function getToolConfig(toolName: string): ToolDisplayConfig {
 /**
  * Check if a tool result should be hidden
  */
-export function shouldHideToolResult(toolName: string, toolResult: any): boolean {
+export function shouldHideToolResult(toolName: string, toolResult: unknown): boolean {
   const config = getToolConfig(toolName);
 
   if (!config.result) return false;
 
-  // Always hidden
   if (config.result.hidden) return true;
 
-  // Hide on success only
-  if (config.result.hideOnSuccess && toolResult && !toolResult.isError) {
+  const result = toolResult as Record<string, unknown> | null | undefined;
+  if (config.result.hideOnSuccess && result && !result.isError) {
     return true;
   }
 

@@ -5,6 +5,13 @@ import { promises as fs } from 'fs';
 import { projectsDb } from '../modules/database/index.js';
 import { queryClaudeSDK } from '../claude-sdk.js';
 import { spawnCursor } from '../cursor-cli.js';
+import {
+  validateCommitRef,
+  validateBranchName,
+  validateFilePath,
+  validateRemoteName,
+  validateProjectPath,
+} from '../shared/git-validators.js';
 
 const router = express.Router();
 const COMMIT_DIFF_CHARACTER_LIMIT = 500_000;
@@ -44,61 +51,6 @@ function spawnAsync(command, args, options = {}) {
       reject(error);
     });
   });
-}
-
-// Input validation helpers (defense-in-depth)
-function validateCommitRef(commit) {
-  // Allow hex hashes, HEAD, HEAD~N, HEAD^N, tag names, branch names
-  if (!/^[a-zA-Z0-9._~^{}@\/-]+$/.test(commit)) {
-    throw new Error('Invalid commit reference');
-  }
-  return commit;
-}
-
-function validateBranchName(branch) {
-  if (!/^[a-zA-Z0-9._\/-]+$/.test(branch)) {
-    throw new Error('Invalid branch name');
-  }
-  return branch;
-}
-
-function validateFilePath(file, projectPath) {
-  if (!file || file.includes('\0')) {
-    throw new Error('Invalid file path');
-  }
-  // Prevent path traversal: resolve the file relative to the project root
-  // and ensure the result stays within the project directory
-  if (projectPath) {
-    const resolved = path.resolve(projectPath, file);
-    const normalizedRoot = path.resolve(projectPath) + path.sep;
-    if (!resolved.startsWith(normalizedRoot) && resolved !== path.resolve(projectPath)) {
-      throw new Error('Invalid file path: path traversal detected');
-    }
-  }
-  return file;
-}
-
-function validateRemoteName(remote) {
-  if (!/^[a-zA-Z0-9._-]+$/.test(remote)) {
-    throw new Error('Invalid remote name');
-  }
-  return remote;
-}
-
-function validateProjectPath(projectPath) {
-  if (!projectPath || projectPath.includes('\0')) {
-    throw new Error('Invalid project path');
-  }
-  const resolved = path.resolve(projectPath);
-  // Must be an absolute path after resolution
-  if (!path.isAbsolute(resolved)) {
-    throw new Error('Invalid project path: must be absolute');
-  }
-  // Block obviously dangerous paths
-  if (resolved === '/' || resolved === path.sep) {
-    throw new Error('Invalid project path: root directory not allowed');
-  }
-  return resolved;
 }
 
 /**

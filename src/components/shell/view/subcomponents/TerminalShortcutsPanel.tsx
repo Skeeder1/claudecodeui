@@ -90,17 +90,40 @@ export default function TerminalShortcutsPanel({
   const handleKeyPress = useCallback(
     (seq: string) => {
       let finalSeq = seq;
-      if (ctrlActive && seq.length === 1) {
-        const code = seq.toLowerCase().charCodeAt(0);
-        if (code >= 97 && code <= 122) {
-          finalSeq = String.fromCharCode(code - 96);
+
+      if (ctrlActive) {
+        const ctrlArrowMap: Record<string, string> = {
+          '\x1b[A': '\x1b[1;5A',
+          '\x1b[B': '\x1b[1;5B',
+          '\x1b[C': '\x1b[1;5C',
+          '\x1b[D': '\x1b[1;5D',
+        };
+        if (ctrlArrowMap[seq]) {
+          finalSeq = ctrlArrowMap[seq];
+        } else if (seq.length === 1) {
+          const code = seq.toLowerCase().charCodeAt(0);
+          if (code >= 97 && code <= 122) {
+            finalSeq = String.fromCharCode(code - 96);
+          }
         }
         setCtrlActive(false);
       }
-      if (altActive && seq.length === 1) {
-        finalSeq = '\x1b' + finalSeq;
+
+      if (altActive) {
+        const altArrowMap: Record<string, string> = {
+          '\x1b[A': '\x1b[1;3A',
+          '\x1b[B': '\x1b[1;3B',
+          '\x1b[C': '\x1b[1;3C',
+          '\x1b[D': '\x1b[1;3D',
+        };
+        if (altArrowMap[finalSeq]) {
+          finalSeq = altArrowMap[finalSeq];
+        } else if (!finalSeq.startsWith('\x1b')) {
+          finalSeq = '\x1b' + finalSeq;
+        }
         setAltActive(false);
       }
+
       sendInput(finalSeq);
     },
     [ctrlActive, altActive, sendInput],
@@ -151,7 +174,7 @@ export default function TerminalShortcutsPanel({
                 type="button"
                 key={key.id}
                 onPointerDown={preventFocusSteal}
-                onClick={() => sendInput(key.sequence)}
+                onClick={() => handleKeyPress(key.sequence)}
                 disabled={!isConnected}
                 className={ICON_BTN}
               >

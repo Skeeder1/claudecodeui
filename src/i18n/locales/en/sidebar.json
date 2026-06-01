@@ -110,10 +110,29 @@
   "version": {
     "updateAvailable": "Update available"
   },
+  "favorites": {
+    "loading": "Loading favorites...",
+    "empty": {
+      "title": "No favorite conversations yet",
+      "description": "Star a conversation from the projects tab to pin it here for fast access and status alerts."
+    },
+    "status": {
+      "needsAttention": "Action required",
+      "running": "Running",
+      "doneUnread": "Finished — unread",
+      "doneRead": "Finished",
+      "error": "Error",
+      "idle": "Idle"
+    }
+  },
+  "recent": {
+    "title": "Recent conversations",
+    "subtitle": "Last 48 hours"
+  },
   "search": {
     "modeProjects": "Projects",
-    "modeConversations": "Conversations",
-    "conversationsPlaceholder": "Search in conversations...",
+    "modeConversations": "Favorites",
+    "conversationsPlaceholder": "Filter favorites or search all conversations...",
     "searching": "Searching...",
     "noResults": "No results found",
     "tryDifferentQuery": "Try a different search query",

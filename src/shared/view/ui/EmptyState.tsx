@@ -1,12 +1,12 @@
 import type { LucideIcon } from 'lucide-react';
 
-type FileTreeEmptyStateProps = {
+type EmptyStateProps = {
   icon: LucideIcon;
   title: string;
   description: string;
 };
 
-export default function FileTreeEmptyState({ icon: Icon, title, description }: FileTreeEmptyStateProps) {
+export default function EmptyState({ icon: Icon, title, description }: EmptyStateProps) {
   return (
     <div className="py-8 text-center">
       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
@@ -17,4 +17,3 @@ export default function FileTreeEmptyState({ icon: Icon, title, description }: F
     </div>
   );
 }
-

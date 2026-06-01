@@ -186,7 +186,7 @@ export function useShellTerminal({
                 data: text,
               });
             })
-            .catch(() => {});
+            .catch(() => { /* clipboard read denied — no paste, no error shown */ });
         }
 
         return false;

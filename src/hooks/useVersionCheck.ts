@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { version } from '../../package.json';
-import { ReleaseInfo } from '../types/sharedTypes';
+import type { ReleaseInfo } from '../types/app';
 
 /**
  * Compare two semantic version strings

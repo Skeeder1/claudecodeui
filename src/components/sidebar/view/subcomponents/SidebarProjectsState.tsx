@@ -1,6 +1,7 @@
 import { Folder, Search } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { LoadingProgress } from '../../../../types/app';
+import { Spinner } from '../../../../shared/view/ui';
 
 type SidebarProjectsStateProps = {
   isLoading: boolean;
@@ -21,7 +22,7 @@ export default function SidebarProjectsState({
     return (
       <div className="px-4 py-12 text-center md:py-8">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted md:mb-3">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <Spinner />
         </div>
         <h3 className="mb-2 text-base font-medium text-foreground md:mb-1">{t('projects.loadingProjects')}</h3>
         {loadingProgress && loadingProgress.total > 0 ? (

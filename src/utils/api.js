@@ -136,6 +136,15 @@ export const api = {
     authenticatedFetch(`/api/projects/${encodeURIComponent(projectId)}/toggle-star`, {
       method: 'POST',
     }),
+  toggleSessionStar: (sessionId) =>
+    authenticatedFetch(`/api/sessions/${encodeURIComponent(sessionId)}/toggle-star`, {
+      method: 'POST',
+    }),
+  markSessionRead: (sessionId) =>
+    authenticatedFetch(`/api/sessions/${encodeURIComponent(sessionId)}/mark-read`, {
+      method: 'POST',
+    }),
+  getStarredSessions: () => authenticatedFetch('/api/sessions/starred'),
   readFile: (projectId, filePath) =>
     authenticatedFetch(`/api/projects/${projectId}/file?filePath=${encodeURIComponent(filePath)}`),
   readFileBlob: (projectId, filePath) =>

@@ -56,17 +56,16 @@ const DialogTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
 
     // asChild: clone child element and compose onClick + capture ref
     if (asChild && React.isValidElement(children)) {
-      const child = children as React.ReactElement<any>;
+      const child = children as React.ReactElement<Record<string, unknown>>;
       return React.cloneElement(child, {
         onClick: (e: React.MouseEvent<HTMLElement>) => {
           onOpenChange(true);
-          child.props.onClick?.(e);
+          (child.props.onClick as ((e: React.MouseEvent<HTMLElement>) => void) | undefined)?.(e);
         },
         ref: (node: HTMLElement | null) => {
           triggerRef.current = node;
-          // Forward the outer ref
-          if (typeof ref === 'function') ref(node as any);
-          else if (ref) (ref as React.MutableRefObject<any>).current = node;
+          if (typeof ref === 'function') ref(node as HTMLButtonElement | null);
+          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
         },
       });
     }

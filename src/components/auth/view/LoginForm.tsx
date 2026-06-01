@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import { useFormSubmit } from '../hooks/useFormSubmit';
 import AuthErrorAlert from './AuthErrorAlert';
 import AuthInputField from './AuthInputField';
 import AuthScreenLayout from './AuthScreenLayout';
@@ -26,8 +27,7 @@ export default function LoginForm() {
   const { login } = useAuth();
 
   const [formState, setFormState] = useState<LoginFormState>(initialState);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { errorMessage, setErrorMessage, isSubmitting, setIsSubmitting } = useFormSubmit();
 
   const updateField = useCallback((field: keyof LoginFormState, value: string) => {
     setFormState((previous) => ({ ...previous, [field]: value }));

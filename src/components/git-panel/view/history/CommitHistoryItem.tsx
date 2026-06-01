@@ -3,14 +3,7 @@ import { useMemo } from 'react';
 import type { GitCommitSummary } from '../../types/types';
 import { getStatusBadgeClass, parseCommitFiles } from '../../utils/gitPanelUtils';
 import GitDiffViewer from '../shared/GitDiffViewer';
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
+import { formatLocalDate } from '../../../../lib/dateTime';
 
 type CommitHistoryItemProps = {
   commit: GitCommitSummary;
@@ -78,7 +71,7 @@ export default function CommitHistoryItem({
               </span>
               <span>
                 <span className="text-muted-foreground/60">Date </span>
-                {formatDate(commit.date)}
+                {formatLocalDate(commit.date)}
               </span>
             </div>
 

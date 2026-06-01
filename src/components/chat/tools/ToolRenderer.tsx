@@ -2,6 +2,7 @@ import React, { memo, useMemo, useCallback } from 'react';
 
 import type { Project } from '../../../types/app';
 import type { SubagentChildTool } from '../types/types';
+import type { DiffLine } from './types';
 
 import { getToolConfig } from './configs/toolConfigs';
 import { OneLineDisplay, CollapsibleDisplay, ToolDiffViewer, MarkdownContent, FileListContent, TodoListContent, TaskListContent, TextContent, QuestionAnswerContent, SubagentContainer } from './components';
@@ -9,19 +10,13 @@ import { PlanDisplay } from './components/PlanDisplay';
 import { ToolStatusBadge } from './components/ToolStatusBadge';
 import type { ToolStatus } from './components/ToolStatusBadge';
 
-type DiffLine = {
-  type: string;
-  content: string;
-  lineNum: number;
-};
-
 interface ToolRendererProps {
   toolName: string;
-  toolInput: any;
-  toolResult?: any;
+  toolInput: unknown;
+  toolResult?: unknown;
   toolId?: string;
   mode: 'input' | 'result';
-  onFileOpen?: (filePath: string, diffInfo?: any) => void;
+  onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
   createDiff?: (oldStr: string, newStr: string) => DiffLine[];
   selectedProject?: Project | null;
   autoExpandTools?: boolean;
@@ -55,10 +50,11 @@ const CLAUDE_DENIAL_MESSAGES = [
   'permission request cancelled',
 ];
 
-function deriveToolStatus(toolResult: any): ToolStatus {
-  if (!toolResult) return 'running';
-  if (toolResult.isError) {
-    const content = String(toolResult.content || '').toLowerCase().trim();
+function deriveToolStatus(toolResult: unknown): ToolStatus {
+  if (!toolResult || typeof toolResult !== 'object') return 'running';
+  const result = toolResult as { isError?: boolean; content?: unknown };
+  if (result.isError) {
+    const content = String(result.content ?? '').toLowerCase().trim();
     if (CLAUDE_DENIAL_MESSAGES.some((msg) => content.includes(msg))) {
       return 'denied';
     }
@@ -87,7 +83,7 @@ export const ToolRenderer: React.FC<ToolRendererProps> = memo(({
   subagentState
 }) => {
   const config = getToolConfig(toolName);
-  const displayConfig: any = mode === 'input' ? config.input : config.result;
+  const displayConfig = mode === 'input' ? config.input : config.result;
 
   const parsedData = useMemo(() => {
     try {

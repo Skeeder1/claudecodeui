@@ -5,6 +5,7 @@ import { Button } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
 import type { MCPServerStatus, SessionWithProvider } from '../../types/types';
+import type { SessionStatusBucket } from './SidebarSessionItem';
 import { getTaskIndicatorStatus } from '../../utils/utils';
 
 import TaskIndicator from './TaskIndicator';
@@ -48,6 +49,9 @@ type SidebarProjectItemProps = {
   onStartEditingSession: (sessionId: string, initialName: string) => void;
   onCancelEditingSession: () => void;
   onSaveEditingSession: (projectName: string, sessionId: string, summary: string, provider: LLMProvider) => void;
+  starredSessionIds: Set<string>;
+  onToggleStarSession: (sessionId: string) => void;
+  sessionStatusMap?: Map<string, SessionStatusBucket>;
   t: TFunction;
 };
 
@@ -89,6 +93,9 @@ export default function SidebarProjectItem({
   onStartEditingSession,
   onCancelEditingSession,
   onSaveEditingSession,
+  starredSessionIds,
+  onToggleStarSession,
+  sessionStatusMap,
   t,
 }: SidebarProjectItemProps) {
   // Project identity is tracked by the DB-assigned `projectId` everywhere
@@ -423,6 +430,9 @@ export default function SidebarProjectItem({
         onDeleteSession={onDeleteSession}
         onLoadMoreSessions={onLoadMoreSessions}
         onNewSession={onNewSession}
+        starredSessionIds={starredSessionIds}
+        onToggleStarSession={onToggleStarSession}
+        sessionStatusMap={sessionStatusMap}
         t={t}
       />
     </div>

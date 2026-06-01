@@ -67,11 +67,11 @@ function chatMessageToNormalized(
   if (msg.isInteractivePrompt) {
     return { ...base, kind: 'interactive_prompt', content: msg.content || '' } as NormalizedMessage;
   }
-  if ((msg as any).isTaskNotification) {
+  if (msg.isTaskNotification) {
     return {
       ...base,
       kind: 'task_notification',
-      status: (msg as any).taskStatus || 'completed',
+      status: typeof msg.taskStatus === 'string' ? msg.taskStatus : 'completed',
       summary: msg.content || '',
     } as NormalizedMessage;
   }

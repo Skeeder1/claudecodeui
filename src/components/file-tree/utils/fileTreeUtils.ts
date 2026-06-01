@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { IMAGE_FILE_EXTENSIONS } from '../constants/constants';
 import type { FileTreeNode } from '../types/types';
+import { formatLocalDate } from '../../../lib/dateTime';
 
 export function filterFileTree(items: FileTreeNode[], query: string): FileTreeNode[] {
   return items.reduce<FileTreeNode[]>((filteredItems, item) => {
@@ -73,7 +74,7 @@ export function formatRelativeTime(date: string | undefined, t: TFunction): stri
     return t('fileTree.daysAgo', { count: Math.floor(diffInSeconds / 86400) });
   }
 
-  return past.toLocaleDateString();
+  return formatLocalDate(date);
 }
 
 export function isImageFile(filename: string): boolean {

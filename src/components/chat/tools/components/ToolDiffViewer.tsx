@@ -1,10 +1,5 @@
 import React, { useMemo } from 'react';
-
-type DiffLine = {
-  type: string;
-  content: string;
-  lineNum: number;
-};
+import type { DiffLine } from '../types';
 
 interface ToolDiffViewerProps {
   oldContent: string;

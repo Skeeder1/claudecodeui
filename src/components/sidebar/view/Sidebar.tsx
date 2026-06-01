@@ -5,7 +5,7 @@ import { useDeviceSettings } from '../../../hooks/useDeviceSettings';
 import { useVersionCheck } from '../../../hooks/useVersionCheck';
 import { useUiPreferences } from '../../../hooks/useUiPreferences';
 import { useSidebarController } from '../hooks/useSidebarController';
-import { useTaskMaster } from '../../../contexts/TaskMasterContext';
+import { useTaskMaster } from '../../task-master/context/TaskMasterContext';
 import { usePaletteOps } from '../../../contexts/PaletteOpsContext';
 import { useTasksSettings } from '../../../contexts/TasksSettingsContext';
 import type { Project, LLMProvider } from '../../../types/app';
@@ -79,6 +79,14 @@ function Sidebar({
     archivedSessions,
     archivedSessionsCount,
     isArchivedSessionsLoading,
+    starredSessions,
+    recentSessions,
+    isStarredSessionsLoading,
+    starredSessionIds,
+    sessionStatusMap,
+    mergedFavoriteGroups,
+    toggleStarSession,
+    markStarredSessionRead,
     toggleProject,
     handleSessionClick,
     toggleStarProject,
@@ -160,6 +168,9 @@ function Sidebar({
     getProjectSessions,
     loadingMoreProjects,
     isProjectStarred,
+    starredSessionIds,
+    onToggleStarSession: toggleStarSession,
+    sessionStatusMap,
     onEditingNameChange: setEditingName,
     onToggleProject: toggleProject,
     onProjectSelect: handleProjectSelect,
@@ -244,6 +255,12 @@ function Sidebar({
             conversationResults={conversationResults}
             isSearching={isSearching}
             searchProgress={searchProgress}
+            starredSessions={starredSessions}
+            recentSessions={recentSessions}
+            mergedFavoriteGroups={mergedFavoriteGroups}
+            isStarredSessionsLoading={isStarredSessionsLoading}
+            onToggleStarSession={toggleStarSession}
+            onMarkSessionRead={markStarredSessionRead}
             onRestoreArchivedProject={restoreArchivedProject}
             onArchivedSessionClick={openArchivedSession}
             onRestoreArchivedSession={restoreArchivedSession}

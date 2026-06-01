@@ -15,7 +15,7 @@ type MarkdownProps = {
 };
 
 type CodeBlockProps = {
-  node?: any;
+  node?: { type?: string };
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
@@ -150,7 +150,7 @@ export function Markdown({ children, className }: MarkdownProps) {
 
   return (
     <div className={className}>
-      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponents as any}>
+      <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={markdownComponents as Parameters<typeof ReactMarkdown>[0]['components']}>
         {content}
       </ReactMarkdown>
     </div>

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { Dialog, DialogContent, Spinner } from "../../../shared/view/ui";
 import { useTranslation } from "react-i18next";
 import { authenticatedFetch } from "../../../utils/api";
-import { ReleaseInfo } from "../../../types/sharedTypes";
+import type { ReleaseInfo } from "../../../types/app";
 import { copyTextToClipboard } from "../../../utils/clipboard";
 import type { InstallMode } from "../../../hooks/useVersionCheck";
 import { IS_PLATFORM } from "../../../constants/config";
@@ -76,27 +77,18 @@ export function VersionUpgradeModal({
                 setUpdateError(data.error || 'Update failed');
                 setUpdateOutput(prev => prev + '\n❌ Update failed: ' + (data.error || 'Unknown error') + '\n');
             }
-        } catch (error: any) {
-            setUpdateError(error.message);
-            setUpdateOutput(prev => prev + '\n❌ Update failed: ' + error.message + '\n');
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error);
+            setUpdateError(message);
+            setUpdateOutput(prev => prev + '\n❌ Update failed: ' + message + '\n');
         } finally {
             setIsUpdating(false);
         }
     }, []);
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <button
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
-                aria-label={t('versionUpdate.ariaLabels.closeModal')}
-            />
-
-            {/* Modal */}
-            <div className="relative mx-4 max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+            <DialogContent className="mx-4 max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-lg border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -221,7 +213,7 @@ export function VersionUpgradeModal({
                             >
                                 {isUpdating ? (
                                     <>
-                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        <Spinner size="sm" color="white" />
                                         {t('versionUpdate.buttons.updating')}
                                     </>
                                 ) : (
@@ -231,8 +223,8 @@ export function VersionUpgradeModal({
                         </>
                     )}
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

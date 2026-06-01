@@ -28,7 +28,11 @@ export type ShellInputMessage = {
   data: string;
 };
 
-export type ShellOutgoingMessage = ShellInitMessage | ShellResizeMessage | ShellInputMessage;
+export type ShellDisconnectMessage = {
+  type: 'disconnect';
+};
+
+export type ShellOutgoingMessage = ShellInitMessage | ShellResizeMessage | ShellInputMessage | ShellDisconnectMessage;
 
 export type ShellIncomingMessage =
   | { type: 'output'; data: string }

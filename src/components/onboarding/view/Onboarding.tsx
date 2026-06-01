@@ -7,6 +7,7 @@ import ProviderLoginModal from '../../provider-auth/view/ProviderLoginModal';
 import AgentConnectionsStep from './subcomponents/AgentConnectionsStep';
 import GitConfigurationStep from './subcomponents/GitConfigurationStep';
 import OnboardingStepProgress from './subcomponents/OnboardingStepProgress';
+import AuthErrorAlert from '../../auth/view/AuthErrorAlert';
 import {
   gitEmailPattern,
   readErrorMessageFromResponse,
@@ -168,11 +169,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               />
             )}
 
-            {errorMessage && (
-              <div className="mt-6 rounded-lg border border-red-300 bg-red-100 p-4 dark:border-red-800 dark:bg-red-900/20">
-                <p className="text-sm text-red-700 dark:text-red-400">{errorMessage}</p>
-              </div>
-            )}
+            <AuthErrorAlert errorMessage={errorMessage} className="mt-6 rounded-lg p-4" />
 
             <div className="mt-8 flex items-center justify-between border-t border-border pt-6">
               <button

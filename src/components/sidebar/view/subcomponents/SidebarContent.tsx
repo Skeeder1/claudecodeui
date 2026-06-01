@@ -1,14 +1,16 @@
 import { type ReactNode } from 'react';
 import { Archive, Folder, MessageSquare, RotateCcw, Search, Trash2 } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { ScrollArea } from '../../../../shared/view/ui';
+import { ScrollArea, Spinner } from '../../../../shared/view/ui';
+import { formatCompactAge } from '../../../../lib/dateTime';
 import type { Project } from '../../../../types/app';
-import type { ReleaseInfo } from '../../../../types/sharedTypes';
-import type { ConversationSearchResults, SearchProgress } from '../../hooks/useSidebarController';
+import type { ReleaseInfo } from '../../../../types/app';
+import type { ConversationSearchResults, MergedFavoriteGroup, SearchProgress, StarredSessionGroup } from '../../hooks/useSidebarController';
 import type { ArchivedProjectListItem, ArchivedSessionListItem, SidebarSearchMode } from '../../types/types';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
 import SidebarFooter from './SidebarFooter';
 import SidebarHeader from './SidebarHeader';
+import SidebarFavoritesList from './SidebarFavoritesList';
 import SidebarProjectList, { type SidebarProjectListProps } from './SidebarProjectList';
 import { getAllSessions } from '../../utils/utils';
 
@@ -83,31 +85,6 @@ function groupArchivedSessionsByProject(sessions: ArchivedSessionListItem[]): Ar
   });
 }
 
-function formatCompactArchivedAge(dateString: string | null): string {
-  if (!dateString) {
-    return '';
-  }
-
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const diffInMinutes = Math.floor(Math.max(0, Date.now() - date.getTime()) / (1000 * 60));
-  if (diffInMinutes < 1) {
-    return '<1m';
-  }
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours}hr`;
-  }
-
-  return `${Math.floor(diffInHours / 24)}d`;
-}
 
 type SidebarContentProps = {
   isPWA: boolean;
@@ -126,6 +103,12 @@ type SidebarContentProps = {
   conversationResults: ConversationSearchResults | null;
   isSearching: boolean;
   searchProgress: SearchProgress | null;
+  starredSessions: StarredSessionGroup[] | null;
+  recentSessions: StarredSessionGroup[] | null;
+  mergedFavoriteGroups: MergedFavoriteGroup[];
+  isStarredSessionsLoading: boolean;
+  onToggleStarSession: (sessionId: string) => void;
+  onMarkSessionRead: (sessionId: string) => void;
   onRestoreArchivedProject: (projectId: string) => void;
   onArchivedSessionClick: (session: ArchivedSessionListItem) => void;
   onRestoreArchivedSession: (sessionId: string) => void;
@@ -164,6 +147,12 @@ export default function SidebarContent({
   conversationResults,
   isSearching,
   searchProgress,
+  starredSessions,
+  recentSessions,
+  mergedFavoriteGroups,
+  isStarredSessionsLoading,
+  onToggleStarSession,
+  onMarkSessionRead,
   onRestoreArchivedProject,
   onArchivedSessionClick,
   onRestoreArchivedSession,
@@ -183,6 +172,7 @@ export default function SidebarContent({
   t,
 }: SidebarContentProps) {
   const showConversationSearch = searchMode === 'conversations' && searchFilter.trim().length >= 2;
+  const showFavoritesView = searchMode === 'conversations' && !showConversationSearch;
   const hasPartialResults = conversationResults && conversationResults.results.length > 0;
   const groupedArchivedSessions = groupArchivedSessionsByProject(archivedSessions);
 
@@ -211,11 +201,19 @@ export default function SidebarContent({
       />
 
       <ScrollArea className="flex-1 overflow-y-auto overscroll-contain md:px-1.5 md:py-2">
-        {showConversationSearch ? (
+        {showFavoritesView ? (
+          <SidebarFavoritesList
+            mergedFavoriteGroups={mergedFavoriteGroups}
+            isLoading={isStarredSessionsLoading}
+            projectListProps={projectListProps}
+            onMarkSessionRead={onMarkSessionRead}
+            t={t}
+          />
+        ) : showConversationSearch ? (
           isSearching && !hasPartialResults ? (
             <div className="px-4 py-12 text-center md:py-8">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted md:mb-3">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                <Spinner />
               </div>
               <p className="text-sm text-muted-foreground">{t('search.searching')}</p>
               {searchProgress && (
@@ -240,7 +238,7 @@ export default function SidebarContent({
                 </p>
                 {isSearching && searchProgress && (
                   <div className="flex items-center gap-1.5">
-                    <div className="h-3 w-3 animate-spin rounded-full border-[1.5px] border-muted-foreground/40 border-t-primary" />
+                    <Spinner size="xs" className="border-muted-foreground/40 border-t-primary" />
                     <p className="text-[10px] text-muted-foreground/60">
                       {searchProgress.scannedProjects}/{searchProgress.totalProjects}
                     </p>
@@ -311,7 +309,7 @@ export default function SidebarContent({
           isArchivedSessionsLoading ? (
             <div className="px-4 py-12 text-center md:py-8">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-muted md:mb-3">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                <Spinner />
               </div>
               <h3 className="mb-2 text-base font-medium text-foreground md:mb-1">
                 {t('archived.loadingTitle', 'Loading archive...')}
@@ -416,7 +414,7 @@ export default function SidebarContent({
                                       : String(session.id))}
                                 </span>
                                 <span className="ml-auto flex-shrink-0 text-[11px] text-muted-foreground">
-                                  {formatCompactArchivedAge(
+                                  {formatCompactAge(
                                     typeof session.lastActivity === 'string'
                                       ? session.lastActivity
                                       : typeof session.updated_at === 'string'
@@ -478,7 +476,7 @@ export default function SidebarContent({
                               </span>
                               {session.lastActivity && (
                                 <span className="ml-auto flex-shrink-0 text-[11px] text-muted-foreground">
-                                  {formatCompactArchivedAge(session.lastActivity)}
+                                  {formatCompactAge(session.lastActivity)}
                                 </span>
                               )}
                             </div>

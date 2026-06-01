@@ -5,35 +5,6 @@ import type { SessionNavigationOptions } from '../../chat/types/types';
 
 export type SessionLifecycleHandler = (sessionId?: string | null) => void;
 
-export type TaskMasterTask = {
-  id: string | number;
-  title?: string;
-  description?: string;
-  status?: string;
-  priority?: string;
-  details?: string;
-  testStrategy?: string;
-  parentId?: string | number;
-  dependencies?: Array<string | number>;
-  subtasks?: TaskMasterTask[];
-  [key: string]: unknown;
-};
-
-export type TaskReference = {
-  id: string | number;
-  title?: string;
-  [key: string]: unknown;
-};
-
-export type TaskSelection = TaskMasterTask | TaskReference;
-
-export type PrdFile = {
-  name: string;
-  content?: string;
-  isExisting?: boolean;
-  [key: string]: unknown;
-};
-
 export type MainContentProps = {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
@@ -78,6 +49,3 @@ export type MobileMenuButtonProps = {
   compact?: boolean;
 };
 
-export type TaskMasterPanelProps = {
-  isVisible: boolean;
-};

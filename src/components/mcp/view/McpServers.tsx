@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { McpProject, McpProvider, McpScope, ProviderMcpServer } from '../types';
 import { IS_PLATFORM } from '../../../constants/config';
-import { Badge, Button } from '../../../shared/view/ui';
+import { Badge, Button, Spinner } from '../../../shared/view/ui';
 import {
   MCP_GLOBAL_SUPPORTED_SCOPES,
   MCP_GLOBAL_SUPPORTED_TRANSPORTS,
@@ -14,6 +14,7 @@ import { useMcpServers } from '../hooks/useMcpServers';
 import { maskSecret } from '../utils/mcpFormatting';
 
 import McpServerFormModal from './modals/McpServerFormModal';
+import AuthErrorAlert from '../../auth/view/AuthErrorAlert';
 
 type McpServersProps = {
   selectedProvider: McpProvider;
@@ -166,15 +167,14 @@ export default function McpServers({ selectedProvider, currentProjects }: McpSer
         </div>
       </div>
 
-      {(loadError || deleteError) && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200">
-          {deleteError || loadError}
-        </div>
-      )}
+      <AuthErrorAlert errorMessage={deleteError || loadError || ''} className="rounded-lg px-3 py-2" />
 
       <div className="space-y-2">
         {isLoading && servers.length === 0 && (
-          <div className="py-8 text-center text-muted-foreground">Loading MCP servers...</div>
+          <div className="flex items-center justify-center gap-3 py-8 text-sm text-muted-foreground">
+            <Spinner />
+            <span>Loading MCP servers...</span>
+          </div>
         )}
 
         {servers.map((server) => (
@@ -238,7 +238,7 @@ export default function McpServers({ selectedProvider, currentProjects }: McpSer
         ))}
 
         {!isLoading && !isLoadingProjectScopes && servers.length === 0 && (
-          <div className="py-8 text-center text-muted-foreground">{t('mcpServers.empty')}</div>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t('mcpServers.empty')}</p>
         )}
       </div>
 

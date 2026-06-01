@@ -1,4 +1,5 @@
-import type { LLMProvider } from '../../types/app';
+import type { LLMProvider, ApiSuccessResponse, ApiErrorResponse, ApiResponse } from '../../types/app';
+export type { ApiSuccessResponse, ApiErrorResponse, ApiResponse };
 
 export type McpProvider = LLMProvider;
 export type McpScope = 'user' | 'local' | 'project';
@@ -75,18 +76,3 @@ export type GlobalMcpServerResult = {
   error?: string;
 };
 
-export type ApiSuccessResponse<T> = {
-  success: true;
-  data: T;
-};
-
-export type ApiErrorResponse = {
-  success: false;
-  error?: {
-    code?: string;
-    message?: string;
-    details?: unknown;
-  };
-};
-
-export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;

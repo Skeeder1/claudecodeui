@@ -1,5 +1,6 @@
 import { Sparkles, X } from 'lucide-react';
 import { PRD_DOCS_URL } from '../constants';
+import { Dialog, DialogContent } from '../../../shared/view/ui';
 
 type GenerateTasksModalProps = {
   isOpen: boolean;
@@ -12,13 +13,9 @@ export default function GenerateTasksModal({
   fileName,
   onClose,
 }: GenerateTasksModalProps) {
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="w-full max-w-md rounded-lg border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-center justify-between border-b border-gray-200 p-6 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/50">
@@ -71,7 +68,7 @@ export default function GenerateTasksModal({
             Got it
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

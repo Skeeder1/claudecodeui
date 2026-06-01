@@ -23,9 +23,8 @@ import {
     abortClaudeSDKSession,
     isClaudeSDKSessionActive,
     getActiveClaudeSDKSessions,
-    resolveToolApproval,
-    getPendingApprovalsForSession,
     reconnectSessionWriter,
+    executeSdkBridge,
 } from './claude-sdk.js';
 import {
     spawnCursor,
@@ -67,6 +66,7 @@ import commandsRoutes from './routes/commands.js';
 import settingsRoutes from './routes/settings.js';
 import agentRoutes from './routes/agent.js';
 import projectModuleRoutes from './modules/projects/projects.routes.js';
+import sessionsModuleRoutes from './modules/sessions/sessions.routes.js';
 import userRoutes from './routes/user.js';
 import geminiRoutes from './routes/gemini.js';
 import pluginsRoutes from './routes/plugins.js';
@@ -106,19 +106,18 @@ const wss = createWebSocketServer(server, {
         abortCodexSession,
         abortGeminiSession,
         abortOpenCodeSession,
-        resolveToolApproval,
         isClaudeSDKSessionActive,
         isCursorSessionActive,
         isCodexSessionActive,
         isGeminiSessionActive,
         isOpenCodeSessionActive,
         reconnectSessionWriter,
-        getPendingApprovalsForSession,
         getActiveClaudeSDKSessions,
         getActiveCursorSessions,
         getActiveCodexSessions,
         getActiveGeminiSessions,
         getActiveOpenCodeSessions,
+        executeSdkBridge,
     },
     shell: {
         getSessionById: (sessionId) => sessionManager.getSession(sessionId),
@@ -164,6 +163,7 @@ app.use('/api/auth', authRoutes);
 
 // Projects API Routes (protected)
 app.use('/api/projects', authenticateToken, projectModuleRoutes);
+app.use('/api/sessions', authenticateToken, sessionsModuleRoutes);
 
 // Git API Routes (protected)
 app.use('/api/git', authenticateToken, gitRoutes);
@@ -171,8 +171,11 @@ app.use('/api/git', authenticateToken, gitRoutes);
 // Cursor API Routes (protected)
 app.use('/api/cursor', authenticateToken, cursorRoutes);
 
-// TaskMaster API Routes (protected)
-app.use('/api/taskmaster', authenticateToken, taskmasterRoutes);
+// TaskMaster API Routes — installation-status is public (no sensitive data), rest protected
+app.use('/api/taskmaster', (req, res, next) => {
+  if (req.path === '/installation-status') return next();
+  authenticateToken(req, res, next);
+}, taskmasterRoutes);
 
 // MCP utilities
 app.use('/api/mcp-utils', authenticateToken, mcpUtilsRoutes);

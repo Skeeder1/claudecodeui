@@ -2,11 +2,11 @@ import { useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { AlertTriangle, EyeOff, Trash2 } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { Button } from '../../../../shared/view/ui';
+import { Button, Dialog, DialogContent } from '../../../../shared/view/ui';
 import Settings from '../../../settings/view/Settings';
 import VersionUpgradeModal from '../../../version-upgrade/view';
 import type { Project } from '../../../../types/app';
-import type { ReleaseInfo } from '../../../../types/sharedTypes';
+import type { ReleaseInfo } from '../../../../types/app';
 import type { InstallMode } from '../../../../hooks/useVersionCheck';
 import { normalizeProjectForSettings } from '../../utils/utils';
 import type { DeleteProjectConfirmation, SessionDeleteConfirmation, SettingsProject } from '../../types/types';
@@ -70,7 +70,6 @@ export default function SidebarModals({
   installMode,
   t,
 }: SidebarModalsProps) {
-  // Settings expects project identity/path fields to be present for dropdown labels and local-scope MCP config.
   const settingsProjects = useMemo(
     () => projects.map(normalizeProjectForSettings),
     [projects],
@@ -98,10 +97,10 @@ export default function SidebarModals({
           document.body,
         )}
 
-      {deleteConfirmation &&
-        ReactDOM.createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+      <Dialog open={!!deleteConfirmation} onOpenChange={(open) => { if (!open) onCancelDeleteProject(); }}>
+        <DialogContent className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+          {deleteConfirmation && (
+            <>
               <div className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
@@ -147,15 +146,15 @@ export default function SidebarModals({
                   {t('actions.cancel')}
                 </Button>
               </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {sessionDeleteConfirmation &&
-        ReactDOM.createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+      <Dialog open={!!sessionDeleteConfirmation} onOpenChange={(open) => { if (!open) onCancelDeleteSession(); }}>
+        <DialogContent className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+          {sessionDeleteConfirmation && (
+            <>
               <div className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -203,10 +202,10 @@ export default function SidebarModals({
                   {t('actions.cancel')}
                 </Button>
               </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <VersionUpgradeModal
         isOpen={showVersionModal}

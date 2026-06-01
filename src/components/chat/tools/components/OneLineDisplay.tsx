@@ -23,7 +23,7 @@ interface OneLineDisplayProps {
     icon?: string;
   };
   resultId?: string;
-  toolResult?: any;
+  toolResult?: unknown;
   toolId?: string;
   status?: ToolStatus;
 }

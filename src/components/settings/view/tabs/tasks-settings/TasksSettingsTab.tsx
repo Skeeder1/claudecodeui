@@ -4,6 +4,7 @@ import SettingsCard from '../../SettingsCard';
 import SettingsRow from '../../SettingsRow';
 import SettingsSection from '../../SettingsSection';
 import SettingsToggle from '../../SettingsToggle';
+import { Spinner } from '../../../../../shared/view/ui';
 
 type TasksSettingsContextValue = {
   tasksEnabled: boolean;
@@ -27,7 +28,7 @@ export default function TasksSettingsTab() {
         {isCheckingInstallation ? (
           <SettingsCard className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <Spinner size="md" color="primary" />
               <span className="text-sm text-muted-foreground">{t('tasks.checking')}</span>
             </div>
           </SettingsCard>

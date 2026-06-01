@@ -1,12 +1,31 @@
-import { Check, Edit2, Trash2, X } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { Check, Edit2, Star, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
 import { Badge, Button } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
+import { formatCompactAge } from '../../../../lib/dateTime';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
 import type { SessionWithProvider } from '../../types/types';
 import { createSessionViewModel } from '../../utils/utils';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
+
+export type SessionStatusBucket =
+  | 'needs_attention'
+  | 'running'
+  | 'done_unread'
+  | 'done_read'
+  | 'error'
+  | 'idle';
+
+const STATUS_BAR_CLASS: Record<SessionStatusBucket, string> = {
+  needs_attention: 'bg-red-500',
+  running: 'bg-amber-500 animate-pulse',
+  done_unread: 'bg-blue-500',
+  done_read: 'bg-zinc-400 dark:bg-zinc-600',
+  error: 'bg-red-900 dark:bg-red-800',
+  idle: '',
+};
 
 type SidebarSessionItemProps = {
   project: Project;
@@ -27,36 +46,12 @@ type SidebarSessionItemProps = {
     sessionTitle: string,
     provider: LLMProvider,
   ) => void;
+  status?: SessionStatusBucket;
+  isStarred?: boolean;
+  onToggleStar?: (sessionId: string) => void;
   t: TFunction;
 };
 
-/**
- * Compact relative time for sidebar rows:
- * <1m, Xm, Xhr, Xd.
- */
-const formatCompactSessionAge = (dateString: string, currentTime: Date): string => {
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  const diffInMinutes = Math.floor(Math.max(0, currentTime.getTime() - date.getTime()) / (1000 * 60));
-  if (diffInMinutes < 1) {
-    return '<1m';
-  }
-
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m`;
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours}hr`;
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays}d`;
-};
 
 export default function SidebarSessionItem({
   project,
@@ -72,11 +67,19 @@ export default function SidebarSessionItem({
   onProjectSelect,
   onSessionSelect,
   onDeleteSession,
+  status,
+  isStarred,
+  onToggleStar,
   t,
 }: SidebarSessionItemProps) {
-  const sessionView = createSessionViewModel(session, currentTime, t);
+  const sessionView = createSessionViewModel(session, t);
   const isSelected = selectedSession?.id === session.id;
-  const compactSessionAge = formatCompactSessionAge(sessionView.sessionTime, currentTime);
+  const compactSessionAge = formatCompactAge(sessionView.sessionTime, currentTime);
+  const statusBarClass = status && status !== 'idle' ? STATUS_BAR_CLASS[status] : null;
+  const handleToggleStar = (event: MouseEvent) => {
+    event.stopPropagation();
+    onToggleStar?.(session.id);
+  };
 
   // Sessions are owned by a project identified by `projectId` (DB primary key)
   // after the projectName → projectId migration.
@@ -95,20 +98,20 @@ export default function SidebarSessionItem({
 
   return (
     <div className="group relative">
-      {sessionView.isActive && (
-        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 transform">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
-        </div>
+      {statusBarClass && (
+        <div
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute left-0 top-1 bottom-1 w-1 rounded-r-sm',
+            statusBarClass,
+          )}
+        />
       )}
-
       <div className="md:hidden">
         <div
           className={cn(
             'p-2 mx-3 my-0.5 rounded-md bg-card border active:scale-[0.98] transition-all duration-150 relative',
-            isSelected ? 'bg-primary/5 border-primary/20' : '',
-            !isSelected && sessionView.isActive
-              ? 'border-green-500/30 bg-green-50/5 dark:bg-green-900/5'
-              : 'border-border/30',
+            isSelected ? 'bg-primary/5 border-primary/20' : 'border-border/30',
           )}
           onClick={selectMobileSession}
         >
@@ -138,6 +141,14 @@ export default function SidebarSessionItem({
               </div>
             </div>
 
+            {onToggleStar && isStarred && (
+              <button
+                className="ml-1 flex h-5 w-5 items-center justify-center rounded-md bg-amber-50 transition-transform active:scale-95 dark:bg-amber-900/20"
+                onClick={handleToggleStar}
+              >
+                <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+              </button>
+            )}
             {!sessionView.isCursorSession && (
               <button
                 className="ml-1 flex h-5 w-5 items-center justify-center rounded-md bg-red-50 opacity-70 transition-transform active:scale-95 dark:bg-red-900/20"
@@ -180,7 +191,7 @@ export default function SidebarSessionItem({
           </div>
         </Button>
 
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 transform items-center gap-1 opacity-0 transition-all duration-200 group-hover:opacity-100">
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 transform items-center gap-1">
             {editingSession === session.id ? (
               <>
                 <input
@@ -223,7 +234,7 @@ export default function SidebarSessionItem({
             ) : (
               <>
                 <button
-                  className="flex h-6 w-6 items-center justify-center rounded bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40"
+                  className="flex h-6 w-6 items-center justify-center rounded bg-gray-50 hover:bg-gray-100 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40"
                   onClick={(event) => {
                     event.stopPropagation();
                     onStartEditingSession(session.id, sessionView.sessionName);
@@ -232,9 +243,30 @@ export default function SidebarSessionItem({
                 >
                   <Edit2 className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                 </button>
+                {onToggleStar && (
+                  <button
+                    className={cn(
+                      'flex h-6 w-6 items-center justify-center rounded transition-opacity duration-200',
+                      isStarred
+                        ? 'opacity-100 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50'
+                        : 'opacity-0 group-hover:opacity-100 bg-gray-50 hover:bg-gray-100 dark:bg-gray-900/20 dark:hover:bg-gray-900/40',
+                    )}
+                    onClick={handleToggleStar}
+                    title={isStarred ? t('tooltips.removeFromFavorites') : t('tooltips.addToFavorites')}
+                  >
+                    <Star
+                      className={cn(
+                        'h-3 w-3',
+                        isStarred
+                          ? 'fill-current text-amber-500 dark:text-amber-400'
+                          : 'text-gray-600 dark:text-gray-400',
+                      )}
+                    />
+                  </button>
+                )}
                 {!sessionView.isCursorSession && (
                   <button
-                    className="flex h-6 w-6 items-center justify-center rounded bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40"
+                    className="flex h-6 w-6 items-center justify-center rounded bg-red-50 hover:bg-red-100 opacity-0 transition-opacity duration-200 group-hover:opacity-100 dark:bg-red-900/20 dark:hover:bg-red-900/40"
                     onClick={(event) => {
                       event.stopPropagation();
                       requestDeleteSession();

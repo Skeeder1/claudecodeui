@@ -450,6 +450,25 @@ export class ClaudeSessionsProvider implements IProviderSessions {
       return messages;
     }
 
+    // SDK-emitted local slash command output (e.g. /agents, /mcp, /usage results).
+    // The SDK handles these commands locally and emits a system message with the
+    // formatted text — surface it as an assistant text bubble so the user sees
+    // the result inline in the chat. Shape: { type: 'system', subtype:
+    // 'local_command_output', content: string } — see SDKLocalCommandOutputMessage
+    // in @anthropic-ai/claude-agent-sdk/sdk.d.ts.
+    if (raw.type === 'system' && raw.subtype === 'local_command_output' && typeof raw.content === 'string') {
+      messages.push(createNormalizedMessage({
+        id: baseId,
+        sessionId,
+        timestamp: ts,
+        provider: PROVIDER,
+        kind: 'text',
+        role: 'assistant',
+        content: raw.content,
+      }));
+      return messages;
+    }
+
     if (raw.type === 'thinking' && raw.message?.content) {
       messages.push(createNormalizedMessage({
         id: baseId,

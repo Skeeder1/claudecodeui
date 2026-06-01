@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Trash2, RefreshCw, GitBranch, Loader2, ServerCrash, ShieldAlert, ExternalLink, BookOpen, Download, BarChart3 } from 'lucide-react';
 import { usePlugins } from '../../../contexts/PluginsContext';
 import type { Plugin } from '../../../contexts/PluginsContext';
@@ -34,7 +35,7 @@ function ToggleSwitch({ checked, onChange, ariaLabel }: { checked: boolean; onCh
 }
 
 /* ─── Server Dot ────────────────────────────────────────────────────────── */
-function ServerDot({ running, t }: { running: boolean; t: any }) {
+function ServerDot({ running, t }: { running: boolean; t: TFunction }) {
   if (!running) return null;
   return (
     <span className="relative flex items-center gap-1.5">

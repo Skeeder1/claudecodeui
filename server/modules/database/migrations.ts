@@ -258,9 +258,15 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
   if (!shouldRebuild) {
     addColumnToTableIfNotExists(db, 'sessions', columnNames, 'jsonl_path', 'TEXT');
     addColumnToTableIfNotExists(db, 'sessions', columnNames, 'isArchived', 'BOOLEAN DEFAULT 0');
+    addColumnToTableIfNotExists(db, 'sessions', columnNames, 'isStarred', 'BOOLEAN DEFAULT 0');
+    addColumnToTableIfNotExists(db, 'sessions', columnNames, 'last_event_kind', 'TEXT');
+    addColumnToTableIfNotExists(db, 'sessions', columnNames, 'last_event_at', 'DATETIME');
+    addColumnToTableIfNotExists(db, 'sessions', columnNames, 'last_read_at', 'DATETIME');
     addColumnToTableIfNotExists(db, 'sessions', columnNames, 'created_at', 'DATETIME');
     addColumnToTableIfNotExists(db, 'sessions', columnNames, 'updated_at', 'DATETIME');
+    addColumnToTableIfNotExists(db, 'sessions', columnNames, 'last_user_message_at', 'DATETIME');
     db.exec('UPDATE sessions SET isArchived = COALESCE(isArchived, 0)');
+    db.exec('UPDATE sessions SET isStarred = COALESCE(isStarred, 0)');
     db.exec('UPDATE sessions SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP)');
     db.exec('UPDATE sessions SET updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)');
     return;
@@ -290,6 +296,22 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
     ? 'COALESCE(isArchived, 0)'
     : '0';
 
+  const isStarredExpression = columnNames.includes('isStarred')
+    ? 'COALESCE(isStarred, 0)'
+    : '0';
+
+  const lastEventKindExpression = columnNames.includes('last_event_kind')
+    ? 'last_event_kind'
+    : 'NULL';
+
+  const lastEventAtExpression = columnNames.includes('last_event_at')
+    ? 'last_event_at'
+    : 'NULL';
+
+  const lastReadAtExpression = columnNames.includes('last_read_at')
+    ? 'last_read_at'
+    : 'NULL';
+
   const createdAtExpression = columnNames.includes('created_at')
     ? 'COALESCE(created_at, CURRENT_TIMESTAMP)'
     : 'CURRENT_TIMESTAMP';
@@ -310,6 +332,10 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
         project_path TEXT,
         jsonl_path TEXT,
         isArchived BOOLEAN DEFAULT 0,
+        isStarred BOOLEAN DEFAULT 0,
+        last_event_kind TEXT,
+        last_event_at DATETIME,
+        last_read_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (session_id),
@@ -327,6 +353,10 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
           ${projectPathExpression} AS project_path,
           ${jsonlPathExpression} AS jsonl_path,
           ${isArchivedExpression} AS isArchived,
+          ${isStarredExpression} AS isStarred,
+          ${lastEventKindExpression} AS last_event_kind,
+          ${lastEventAtExpression} AS last_event_at,
+          ${lastReadAtExpression} AS last_read_at,
           ${createdAtExpression} AS created_at,
           ${updatedAtExpression} AS updated_at,
           rowid AS source_rowid
@@ -341,6 +371,10 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
           project_path,
           jsonl_path,
           isArchived,
+          isStarred,
+          last_event_kind,
+          last_event_at,
+          last_read_at,
           created_at,
           updated_at,
           ROW_NUMBER() OVER (
@@ -356,6 +390,10 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
         project_path,
         jsonl_path,
         isArchived,
+        isStarred,
+        last_event_kind,
+        last_event_at,
+        last_read_at,
         created_at,
         updated_at
       )
@@ -366,6 +404,10 @@ const rebuildSessionsTableWithProjectSchema = (db: Database): void => {
         project_path,
         jsonl_path,
         isArchived,
+        isStarred,
+        last_event_kind,
+        last_event_at,
+        last_read_at,
         created_at,
         updated_at
       FROM ranked_rows
@@ -433,6 +475,7 @@ export const runMigrations = (db: Database) => {
     db.exec('CREATE INDEX IF NOT EXISTS idx_session_ids_lookup ON sessions(session_id)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_project_path ON sessions(project_path)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_is_archived ON sessions(isArchived)');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_is_starred ON sessions(isStarred)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_projects_is_starred ON projects(isStarred)');
     db.exec('CREATE INDEX IF NOT EXISTS idx_projects_is_archived ON projects(isArchived)');
 

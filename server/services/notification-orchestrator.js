@@ -1,6 +1,7 @@
 import webPush from 'web-push';
 
 import { notificationPreferencesDb, pushSubscriptionsDb, sessionsDb } from '../modules/database/index.js';
+import { connectedClients, WS_OPEN_STATE } from '../modules/websocket/services/websocket-state.service.js';
 
 const KIND_TO_PREF_KEY = {
   action_required: 'actionRequired',
@@ -170,10 +171,45 @@ async function sendWebPush(userId, event) {
   });
 }
 
+function persistAndBroadcastSessionEvent(event) {
+  if (!event?.sessionId || !event?.kind) {
+    return;
+  }
+
+  try {
+    sessionsDb.recordSessionEvent(event.sessionId, event.kind, event.createdAt ?? null);
+  } catch (err) {
+    console.error('Failed to record session event:', err);
+  }
+
+  const payload = JSON.stringify({
+    type: 'session_status_updated',
+    sessionId: event.sessionId,
+    provider: event.provider ?? null,
+    kind: event.kind,
+    at: event.createdAt ?? new Date().toISOString(),
+  });
+
+  for (const client of connectedClients) {
+    if (client.readyState === WS_OPEN_STATE) {
+      try {
+        client.send(payload);
+      } catch (err) {
+        console.error('Failed to broadcast session_status_updated:', err);
+      }
+    }
+  }
+}
+
 function notifyUserIfEnabled({ userId, event }) {
   if (!userId || !event) {
     return;
   }
+
+  // Persist the event on the session row and broadcast a sidebar status
+  // update independently of the push channel: in-app UI must reflect state
+  // changes even when push notifications are disabled.
+  persistAndBroadcastSessionEvent(event);
 
   const preferences = notificationPreferencesDb.getPreferences(userId);
   if (!shouldSendPush(preferences, event)) {

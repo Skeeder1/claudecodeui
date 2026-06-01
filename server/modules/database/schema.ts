@@ -87,8 +87,13 @@ CREATE TABLE IF NOT EXISTS sessions (
     project_path TEXT,
     jsonl_path TEXT,
     isArchived BOOLEAN DEFAULT 0,
+    isStarred BOOLEAN DEFAULT 0,
+    last_event_kind TEXT,
+    last_event_at DATETIME,
+    last_read_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_user_message_at DATETIME,
     PRIMARY KEY (session_id),
     FOREIGN KEY (project_path) REFERENCES projects(project_path)
     ON DELETE SET NULL

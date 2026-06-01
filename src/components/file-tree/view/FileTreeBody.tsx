@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from 'react';
 import { Folder, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { FileTreeNode, FileTreeViewMode } from '../types/types';
-import FileTreeEmptyState from './FileTreeEmptyState';
+import EmptyState from '../../../shared/view/ui/EmptyState';
 import FileTreeList from './FileTreeList';
 
 type FileTreeBodyProps = {
@@ -62,13 +62,13 @@ export default function FileTreeBody({
   return (
     <>
       {files.length === 0 ? (
-        <FileTreeEmptyState
+        <EmptyState
           icon={Folder}
           title={t('fileTree.noFilesFound')}
           description={t('fileTree.checkProjectPath')}
         />
       ) : filteredFiles.length === 0 && searchQuery ? (
-        <FileTreeEmptyState
+        <EmptyState
           icon={Search}
           title={t('fileTree.noMatchesFound')}
           description={t('fileTree.tryDifferentSearch')}

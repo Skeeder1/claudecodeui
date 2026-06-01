@@ -5,7 +5,7 @@ import { Button } from '../../../../shared/view/ui';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
 import type { SessionWithProvider } from '../../types/types';
 
-import SidebarSessionItem from './SidebarSessionItem';
+import SidebarSessionItem, { type SessionStatusBucket } from './SidebarSessionItem';
 
 type SidebarProjectSessionsProps = {
   project: Project;
@@ -32,6 +32,9 @@ type SidebarProjectSessionsProps = {
   ) => void;
   onLoadMoreSessions: (projectId: string) => void;
   onNewSession: (project: Project) => void;
+  starredSessionIds: Set<string>;
+  onToggleStarSession: (sessionId: string) => void;
+  sessionStatusMap?: Map<string, SessionStatusBucket>;
   t: TFunction;
 };
 
@@ -73,6 +76,9 @@ export default function SidebarProjectSessions({
   onDeleteSession,
   onLoadMoreSessions,
   onNewSession,
+  starredSessionIds,
+  onToggleStarSession,
+  sessionStatusMap,
   t,
 }: SidebarProjectSessionsProps) {
   if (!isExpanded) {
@@ -130,6 +136,9 @@ export default function SidebarProjectSessions({
               onProjectSelect={onProjectSelect}
               onSessionSelect={onSessionSelect}
               onDeleteSession={onDeleteSession}
+              isStarred={starredSessionIds.has(session.id)}
+              onToggleStar={onToggleStarSession}
+              status={sessionStatusMap?.get(session.id)}
               t={t}
             />
           ))}

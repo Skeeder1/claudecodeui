@@ -145,9 +145,10 @@ export const SubagentContainer: React.FC<SubagentContainerProps> = ({
                   const parsed = JSON.parse(content);
                   if (Array.isArray(parsed)) {
                     // Extract text from array format like [{"type":"text","text":"..."}]
-                    const textParts = parsed
-                      .filter((p: any) => p.type === 'text' && p.text)
-                      .map((p: any) => p.text);
+                    type TextPart = { type: string; text: string };
+                    const textParts = (parsed as TextPart[])
+                      .filter((p) => p.type === 'text' && p.text)
+                      .map((p) => p.text);
                     if (textParts.length > 0) {
                       content = textParts.join('\n');
                     }
@@ -157,9 +158,10 @@ export const SubagentContainer: React.FC<SubagentContainerProps> = ({
                 }
               } else if (Array.isArray(content)) {
                 // Direct array format
-                const textParts = content
-                  .filter((p: any) => p.type === 'text' && p.text)
-                  .map((p: any) => p.text);
+                type ContentPart = { type?: string; text?: string };
+                const textParts = (content as ContentPart[])
+                  .filter((p) => p.type === 'text' && p.text)
+                  .map((p) => p.text as string);
                 if (textParts.length > 0) {
                   content = textParts.join('\n');
                 }

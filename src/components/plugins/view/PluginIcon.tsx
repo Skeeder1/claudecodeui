@@ -29,7 +29,7 @@ export default function PluginIcon({ pluginName, iconFile, className }: Props) {
           setSvg(text);
         }
       })
-      .catch(() => {});
+      .catch(() => { /* SVG load failed — component renders empty span fallback */ });
   }, [url]);
 
   if (!svg) return <span className={className} />;

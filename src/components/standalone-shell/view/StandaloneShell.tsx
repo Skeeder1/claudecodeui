@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { Project, ProjectSession } from '../../../types/app';
 import Shell from '../../shell/view/Shell';
-import StandaloneShellEmptyState from './subcomponents/StandaloneShellEmptyState';
+import ShellEmptyState from '../../shell/view/subcomponents/ShellEmptyState';
 import StandaloneShellHeader from './subcomponents/StandaloneShellHeader';
 
 type StandaloneShellProps = {
@@ -51,7 +51,7 @@ export default function StandaloneShell({
   );
 
   if (!project) {
-    return <StandaloneShellEmptyState className={className} />;
+    return <ShellEmptyState title="No Project Selected" description="A project is required to open a shell" className={className} />;
   }
 
   return (

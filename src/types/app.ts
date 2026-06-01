@@ -99,3 +99,26 @@ export type AppSocketMessage =
   | LoadingProgressMessage
   | ProjectsUpdatedMessage
   | { type?: string;[key: string]: unknown };
+
+export type ApiSuccessResponse<T> = {
+  success: true;
+  data: T;
+};
+
+export type ApiErrorResponse = {
+  success: false;
+  error?: {
+    code?: string;
+    message?: string;
+    details?: unknown;
+  };
+};
+
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+export type ReleaseInfo = {
+  title: string;
+  body: string;
+  htmlUrl: string;
+  publishedAt: string;
+};

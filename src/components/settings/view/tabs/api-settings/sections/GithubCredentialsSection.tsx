@@ -1,6 +1,7 @@
 import { Eye, EyeOff, Github, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button, Input } from '../../../../../../shared/view/ui';
+import { formatLocalDate } from '../../../../../../lib/dateTime';
 import type { GithubCredentialItem } from '../types';
 
 type GithubCredentialsSectionProps = {
@@ -117,7 +118,7 @@ export default function GithubCredentialsSection({
                   <div className="text-xs text-muted-foreground">{credential.description}</div>
                 )}
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {t('apiKeys.github.added')} {new Date(credential.created_at).toLocaleDateString()}
+                  {t('apiKeys.github.added')} {formatLocalDate(credential.created_at)}
                 </div>
               </div>
               <div className="flex items-center gap-2">

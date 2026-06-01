@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Check, Download, RotateCcw, Trash2, Upload } from 'lucide-react';
 import {
   CONFIRMATION_ACTION_LABELS,
@@ -7,6 +6,7 @@ import {
   CONFIRMATION_TITLES,
 } from '../../constants/constants';
 import type { ConfirmationRequest } from '../../types/types';
+import { Dialog, DialogContent } from '../../../../shared/view/ui';
 
 type ConfirmActionModalProps = {
   action: ConfirmationRequest | null;
@@ -37,65 +37,43 @@ function renderConfirmActionIcon(actionType: ConfirmationRequest['type']) {
 export default function ConfirmActionModal({ action, onCancel, onConfirm }: ConfirmActionModalProps) {
   const titleId = action ? `confirmation-title-${action.type}` : undefined;
 
-  useEffect(() => {
-    if (!action) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onCancel();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [action, onCancel]);
-
-  if (!action) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-      <div
-        className="relative w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-        role="dialog"
-        aria-modal="true"
+    <Dialog open={!!action} onOpenChange={(open) => { if (!open) onCancel(); }}>
+      <DialogContent
+        className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl"
         aria-labelledby={titleId}
       >
-        <div className="p-6">
-          <div className="mb-4 flex items-center">
-            <div className={`mr-3 rounded-full p-2 ${CONFIRMATION_ICON_CONTAINER_CLASSES[action.type]}`}>
-              {renderConfirmActionIcon(action.type)}
+        {action && (
+          <div className="p-6">
+            <div className="mb-4 flex items-center">
+              <div className={`mr-3 rounded-full p-2 ${CONFIRMATION_ICON_CONTAINER_CLASSES[action.type]}`}>
+                {renderConfirmActionIcon(action.type)}
+              </div>
+              <h3 id={titleId} className="text-lg font-semibold text-foreground">
+                {CONFIRMATION_TITLES[action.type]}
+              </h3>
             </div>
-            <h3 id={titleId} className="text-lg font-semibold text-foreground">
-              {CONFIRMATION_TITLES[action.type]}
-            </h3>
-          </div>
 
-          <p className="mb-6 text-sm text-muted-foreground">{action.message}</p>
+            <p className="mb-6 text-sm text-muted-foreground">{action.message}</p>
 
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onCancel}
-              className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm text-white transition-colors ${CONFIRMATION_BUTTON_CLASSES[action.type]}`}
-            >
-              {renderConfirmActionIcon(action.type)}
-              <span>{CONFIRMATION_ACTION_LABELS[action.type]}</span>
-            </button>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={onCancel}
+                className="rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                className={`flex items-center space-x-2 rounded-lg px-4 py-2 text-sm text-white transition-colors ${CONFIRMATION_BUTTON_CLASSES[action.type]}`}
+              >
+                {renderConfirmActionIcon(action.type)}
+                <span>{CONFIRMATION_ACTION_LABELS[action.type]}</span>
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

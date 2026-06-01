@@ -1,5 +1,6 @@
 import { Plus, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Dialog, DialogContent } from '../../../../shared/view/ui';
 
 type NewBranchModalProps = {
   isOpen: boolean;
@@ -43,21 +44,14 @@ export default function NewBranchModal({
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div
-        className="relative w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-        role="dialog"
-        aria-modal="true"
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl"
         aria-labelledby="new-branch-title"
       >
         <div className="p-6">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">Create New Branch</h3>
+          <h3 id="new-branch-title" className="mb-4 text-lg font-semibold text-foreground">Create New Branch</h3>
 
           <div className="mb-4">
             <label htmlFor="git-new-branch-name" className="mb-2 block text-sm font-medium text-foreground/80">
@@ -73,13 +67,6 @@ export default function NewBranchModal({
                   event.preventDefault();
                   event.stopPropagation();
                   void handleCreateBranch();
-                  return;
-                }
-
-                if (event.key === 'Escape' && !isCreatingBranch) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onClose();
                 }
               }}
               placeholder="feature/new-feature"
@@ -118,7 +105,7 @@ export default function NewBranchModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

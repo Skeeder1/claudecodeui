@@ -28,6 +28,9 @@ export type SidebarProjectListProps = {
   onLoadMoreSessions: (projectId: string) => void;
   loadingMoreProjects: Set<string>;
   isProjectStarred: (projectName: string) => boolean;
+  starredSessionIds: Set<string>;
+  onToggleStarSession: (sessionId: string) => void;
+  sessionStatusMap?: Map<string, import('./SidebarSessionItem').SessionStatusBucket>;
   onEditingNameChange: (value: string) => void;
   onToggleProject: (projectName: string) => void;
   onProjectSelect: (project: Project) => void;
@@ -72,6 +75,9 @@ export default function SidebarProjectList({
   onLoadMoreSessions,
   loadingMoreProjects,
   isProjectStarred,
+  starredSessionIds,
+  onToggleStarSession,
+  sessionStatusMap,
   onEditingNameChange,
   onToggleProject,
   onProjectSelect,
@@ -151,6 +157,9 @@ export default function SidebarProjectList({
               onStartEditingSession={onStartEditingSession}
               onCancelEditingSession={onCancelEditingSession}
               onSaveEditingSession={onSaveEditingSession}
+              starredSessionIds={starredSessionIds}
+              onToggleStarSession={onToggleStarSession}
+              sessionStatusMap={sessionStatusMap}
               t={t}
             />
           ))}

@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 
 import { api } from '../../../utils/api';
 import { usePaletteOps } from '../../../contexts/PaletteOpsContext';
+import { useWebSocket } from '../../../contexts/WebSocketContext';
 import type { Project, ProjectSession, LLMProvider } from '../../../types/app';
 import type {
   ArchivedProjectListItem,
@@ -61,6 +62,46 @@ export type ConversationSearchResults = {
 export type SearchProgress = {
   scannedProjects: number;
   totalProjects: number;
+};
+
+export type StarredSessionStatus =
+  | 'needs_attention'
+  | 'running'
+  | 'done_unread'
+  | 'done_read'
+  | 'error'
+  | 'idle';
+
+export type StarredSessionItem = {
+  sessionId: string;
+  provider: string;
+  title: string;
+  status: StarredSessionStatus;
+  lastActivity: string | null;
+  lastEventKind: string | null;
+  lastEventAt: string | null;
+  lastReadAt: string | null;
+};
+
+export type StarredSessionGroup = {
+  projectId: string | null;
+  projectPath: string | null;
+  displayName: string;
+  sessions: StarredSessionItem[];
+};
+
+export type MergedFavoriteSession = StarredSessionItem & { isStarred: boolean };
+
+export type MergedFavoriteGroup = {
+  projectId: string | null;
+  projectPath: string | null;
+  displayName: string;
+  sessions: MergedFavoriteSession[];
+};
+
+type StarredSessionsApiPayload = {
+  projects?: StarredSessionGroup[];
+  recent?: StarredSessionGroup[];
 };
 
 type ArchivedSessionsApiPayload = {
@@ -139,11 +180,16 @@ export function useSidebarController({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [optimisticStarByProjectId, setOptimisticStarByProjectId] = useState<Map<string, boolean>>(new Map());
   const [loadingMoreProjects, setLoadingMoreProjects] = useState<Set<string>>(new Set());
+  const [starredSessions, setStarredSessions] = useState<StarredSessionGroup[] | null>(null);
+  const [recentSessions, setRecentSessions] = useState<StarredSessionGroup[] | null>(null);
+  const [isStarredSessionsLoading, setIsStarredSessionsLoading] = useState(false);
   const searchSeqRef = useRef(0);
   const eventSourceRef = useRef<EventSource | null>(null);
   const starToggleSequenceByProjectRef = useRef<Map<string, number>>(new Map());
+  const sessionStarToggleSequenceRef = useRef<Map<string, number>>(new Map());
   const migrationStartedRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
+  const { latestMessage } = useWebSocket();
 
   const isSidebarCollapsed = !isMobile && !sidebarVisible;
 
@@ -281,9 +327,34 @@ export function useSidebarController({
     void migrateLegacyStars();
   }, [onRefresh]);
 
+  const fetchStarredSessions = useCallback(async () => {
+    setIsStarredSessionsLoading(true);
+    try {
+      const response = await api.getStarredSessions();
+      if (!response.ok) {
+        throw new Error(`Failed to load starred sessions: ${response.status}`);
+      }
+      const payload = (await response.json()) as StarredSessionsApiPayload;
+      setStarredSessions(Array.isArray(payload.projects) ? payload.projects : []);
+      setRecentSessions(Array.isArray(payload.recent) ? payload.recent : []);
+    } catch (error) {
+      console.error('[Sidebar] Failed to load starred sessions:', error);
+      setStarredSessions([]);
+      setRecentSessions([]);
+    } finally {
+      setIsStarredSessionsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchArchivedSessions();
   }, [fetchArchivedSessions]);
+
+  // Load favorites once on mount so badge counts stay accurate even while the
+  // user browses the projects tab.
+  useEffect(() => {
+    void fetchStarredSessions();
+  }, [fetchStarredSessions]);
 
   useEffect(() => {
     if (searchMode !== 'archived') {
@@ -294,6 +365,65 @@ export function useSidebarController({
     // and background synchronizer updates are reflected without a full reload.
     void fetchArchivedSessions();
   }, [fetchArchivedSessions, searchMode]);
+
+  useEffect(() => {
+    if (searchMode !== 'conversations') {
+      return;
+    }
+    if (searchFilter.trim().length >= 2) {
+      return;
+    }
+    // Refresh the favorites view when the tab opens or when the filter clears,
+    // so server-side status changes show up without a full reload.
+    void fetchStarredSessions();
+  }, [fetchStarredSessions, searchMode, searchFilter]);
+
+  useEffect(() => {
+    if (!latestMessage) {
+      return;
+    }
+    if (latestMessage.type !== 'session_status_updated') {
+      return;
+    }
+    const incomingSessionId: string | undefined = latestMessage.sessionId;
+    const incomingKind: string | undefined = latestMessage.kind;
+    const incomingAt: string | undefined = latestMessage.at;
+    if (!incomingSessionId || !incomingKind) {
+      return;
+    }
+
+    setStarredSessions((previous) => {
+      if (!previous) return previous;
+      let mutated = false;
+      const next = previous.map((group) => {
+        let groupChanged = false;
+        const sessions = group.sessions.map((session) => {
+          if (session.sessionId !== incomingSessionId) {
+            return session;
+          }
+          groupChanged = true;
+          const nextStatus: StarredSessionStatus =
+            incomingKind === 'error'
+              ? 'error'
+              : incomingKind === 'action_required'
+                ? 'needs_attention'
+                : incomingKind === 'stop'
+                  ? 'done_unread'
+                  : session.status;
+          return {
+            ...session,
+            status: nextStatus,
+            lastEventKind: incomingKind,
+            lastEventAt: incomingAt ?? new Date().toISOString(),
+          };
+        });
+        if (!groupChanged) return group;
+        mutated = true;
+        return { ...group, sessions };
+      });
+      return mutated ? next : previous;
+    });
+  }, [latestMessage]);
 
   useEffect(() => {
     setOptimisticStarByProjectId((previous) => {
@@ -516,6 +646,111 @@ export function useSidebarController({
     (projectId: string) => resolveProjectStarState(projectId),
     [resolveProjectStarState],
   );
+
+  const toggleStarSession = useCallback(
+    async (sessionId: string) => {
+      const latestSequence = (sessionStarToggleSequenceRef.current.get(sessionId) ?? 0) + 1;
+      sessionStarToggleSequenceRef.current.set(sessionId, latestSequence);
+
+      try {
+        const response = await api.toggleSessionStar(sessionId);
+        if (!response.ok) {
+          throw new Error(`Failed to toggle session star: ${response.status}`);
+        }
+
+        if (sessionStarToggleSequenceRef.current.get(sessionId) !== latestSequence) {
+          return;
+        }
+
+        await fetchStarredSessions();
+      } catch (error) {
+        console.error('[Sidebar] Failed to toggle session star:', error);
+      }
+    },
+    [fetchStarredSessions],
+  );
+
+  const starredSessionIds = useMemo<Set<string>>(() => {
+    const ids = new Set<string>();
+    if (!starredSessions) return ids;
+    for (const group of starredSessions) {
+      for (const session of group.sessions) {
+        ids.add(session.sessionId);
+      }
+    }
+    return ids;
+  }, [starredSessions]);
+
+  const sessionStatusMap = useMemo<Map<string, StarredSessionStatus>>(() => {
+    const map = new Map<string, StarredSessionStatus>();
+    for (const group of [...(starredSessions ?? []), ...(recentSessions ?? [])]) {
+      for (const session of group.sessions) {
+        if (session.status && session.status !== 'idle') {
+          map.set(session.sessionId, session.status);
+        }
+      }
+    }
+    return map;
+  }, [starredSessions, recentSessions]);
+
+  const mergedFavoriteGroups = useMemo<MergedFavoriteGroup[]>(() => {
+    const groupsByKey = new Map<string, MergedFavoriteGroup>();
+    const NOW = Date.now();
+    const MS_24H = 24 * 60 * 60 * 1000;
+    const addGroup = (group: StarredSessionGroup, isStarred: boolean) => {
+      const key = group.projectId ?? group.projectPath ?? group.displayName;
+      if (!groupsByKey.has(key)) {
+        groupsByKey.set(key, {
+          projectId: group.projectId,
+          projectPath: group.projectPath,
+          displayName: group.displayName,
+          sessions: [],
+        });
+      }
+      for (const session of group.sessions) {
+        if (isStarred || !starredSessionIds.has(session.sessionId)) {
+          if (!isStarred) {
+            const raw = session.lastActivity;
+            const t = raw
+              ? new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime()
+              : 0;
+            if (isNaN(t) || NOW - t >= MS_24H) continue;
+          }
+          groupsByKey.get(key)!.sessions.push({ ...session, isStarred });
+        }
+      }
+    };
+    for (const g of starredSessions ?? []) addGroup(g, true);
+    for (const g of recentSessions ?? []) addGroup(g, false);
+    return [...groupsByKey.values()].filter((g) => g.sessions.length > 0);
+  }, [starredSessions, recentSessions, starredSessionIds]);
+
+  const markStarredSessionRead = useCallback(async (sessionId: string) => {
+    setStarredSessions((previous) => {
+      if (!previous) return previous;
+      let mutated = false;
+      const nowIso = new Date().toISOString();
+      const next = previous.map((group) => {
+        let groupChanged = false;
+        const sessions = group.sessions.map((session) => {
+          if (session.sessionId !== sessionId) return session;
+          if (session.status !== 'done_unread') return session;
+          groupChanged = true;
+          return { ...session, status: 'done_read' as StarredSessionStatus, lastReadAt: nowIso };
+        });
+        if (!groupChanged) return group;
+        mutated = true;
+        return { ...group, sessions };
+      });
+      return mutated ? next : previous;
+    });
+
+    try {
+      await api.markSessionRead(sessionId);
+    } catch (error) {
+      console.error('[Sidebar] Failed to mark session as read:', error);
+    }
+  }, []);
 
   const getProjectSessions = useCallback((project: Project) => getAllSessions(project), []);
 
@@ -918,6 +1153,14 @@ export function useSidebarController({
     archivedSessions: filteredArchivedSessions,
     archivedSessionsCount: archivedProjects.length + archivedSessions.length,
     isArchivedSessionsLoading,
+    starredSessions,
+    recentSessions,
+    isStarredSessionsLoading,
+    starredSessionIds,
+    sessionStatusMap,
+    mergedFavoriteGroups,
+    toggleStarSession,
+    markStarredSessionRead,
     toggleProject,
     handleSessionClick,
     toggleStarProject,

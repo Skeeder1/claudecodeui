@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, KeyboardEvent, RefObject, SetStateAction } from 'react';
 
 import { authenticatedFetch } from '../../../utils/api';
+import { useWebSocket } from '../../../contexts/WebSocketContext';
 import { safeLocalStorage } from '../utils/chatStorage';
 import type { LLMProvider, Project } from '../../../types/app';
 
@@ -85,6 +86,32 @@ const dedupeProviderSkills = (skills: ProviderSkill[]): ProviderSkill[] => {
   });
 };
 
+type SdkDiscoveredCommand = {
+  name: string;
+  description?: string;
+  argumentHint?: string;
+};
+
+// Maps an SDK-discovered slash command to our SlashCommand shape.
+// The SDK returns names WITHOUT a leading slash; we add it to match the menu's convention.
+// `namespace: 'sdk'` makes the dispatcher in useChatComposerState skip frontend
+// interception and forward the command directly to the SDK, which handles it natively
+// (the SDK emits SDKLocalCommandOutputMessage for results — see sdk.d.ts:2757).
+const mapSdkCommandToSlashCommand = (cmd: SdkDiscoveredCommand): SlashCommand => {
+  const rawName = cmd.name?.trim() ?? '';
+  const normalizedName = rawName.startsWith('/') ? rawName : `/${rawName}`;
+  return {
+    name: normalizedName,
+    description: cmd.description,
+    namespace: 'sdk',
+    type: 'sdk',
+    metadata: {
+      type: 'sdk',
+      argumentHint: cmd.argumentHint,
+    },
+  };
+};
+
 const mapSkillToSlashCommand = (skill: ProviderSkill): SlashCommand => ({
   name: skill.command,
   description: skill.description,
@@ -113,9 +140,10 @@ const filterSlashCommands = (
   const commandPrefix = normalizedQuery.startsWith('/')
     ? normalizedQuery
     : `/${normalizedQuery}`;
-  const namePrefixMatches = commands.filter((command) =>
-    command.name.toLowerCase().startsWith(commandPrefix),
-  );
+  const namePrefixMatches = commands.filter((command) => {
+    const name = typeof command.name === 'string' ? command.name : '';
+    return name.toLowerCase().startsWith(commandPrefix);
+  });
 
   // Namespaced commands should behave like path completion. Once a provider
   // namespace is typed, only exact command-prefix matches should stay visible.
@@ -123,9 +151,10 @@ const filterSlashCommands = (
     return namePrefixMatches;
   }
 
-  const nameSubstringMatches = commands.filter((command) =>
-    command.name.toLowerCase().includes(normalizedQuery),
-  );
+  const nameSubstringMatches = commands.filter((command) => {
+    const name = typeof command.name === 'string' ? command.name : '';
+    return name.toLowerCase().includes(normalizedQuery);
+  });
   if (nameSubstringMatches.length > 0) {
     return nameSubstringMatches;
   }
@@ -143,12 +172,39 @@ export function useSlashCommands({
   textareaRef,
   onExecuteCommand,
 }: UseSlashCommandsOptions) {
-  const [slashCommands, setSlashCommands] = useState<SlashCommand[]>([]);
+  const [baseCommands, setBaseCommands] = useState<SlashCommand[]>([]);
+  const [sdkCommands, setSdkCommands] = useState<SlashCommand[]>([]);
   const [filteredCommands, setFilteredCommands] = useState<SlashCommand[]>([]);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [commandQuery, setCommandQuery] = useState('');
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(-1);
   const [slashPosition, setSlashPosition] = useState(-1);
+  const { latestMessage } = useWebSocket();
+
+  // SDK-discovered commands are deduplicated against built-in/custom/skill commands
+  // to avoid duplicate menu entries when the SDK exposes a name we already provide
+  // (e.g., /clear). Built-in commands win — they have richer frontend handlers.
+  const slashCommands = useMemo(() => {
+    if (sdkCommands.length === 0) return baseCommands;
+    const existingNames = new Set(baseCommands.map((c) => c.name));
+    const uniqueSdk = sdkCommands.filter((c) => !existingNames.has(c.name));
+    return [...baseCommands, ...uniqueSdk];
+  }, [baseCommands, sdkCommands]);
+
+  // Subscribe to the SDK capability broadcast. Each new session emits one
+  // 'sdk-capabilities' message after init — we keep only the latest list.
+  // The wrapper is provider-aware so capabilities only apply to Claude sessions.
+  useEffect(() => {
+    if (!latestMessage || typeof latestMessage !== 'object') return;
+    if (latestMessage.type !== 'sdk-capabilities') return;
+    if (latestMessage.provider && latestMessage.provider !== provider) return;
+    const cmds = Array.isArray(latestMessage.commands) ? latestMessage.commands : [];
+    if (cmds.length === 0) {
+      setSdkCommands([]);
+      return;
+    }
+    setSdkCommands(cmds.map(mapSdkCommandToSlashCommand));
+  }, [latestMessage, provider]);
 
   const commandQueryTimerRef = useRef<number | null>(null);
 
@@ -172,7 +228,7 @@ export function useSlashCommands({
 
     const fetchCommands = async () => {
       if (!selectedProject) {
-        setSlashCommands([]);
+        setBaseCommands([]);
         setFilteredCommands([]);
         return;
       }
@@ -227,12 +283,12 @@ export function useSlashCommands({
         });
 
         if (!cancelled) {
-          setSlashCommands(sortedCommands);
+          setBaseCommands(sortedCommands);
         }
       } catch (error) {
         console.error('Error fetching slash commands:', error);
         if (!cancelled) {
-          setSlashCommands([]);
+          setBaseCommands([]);
         }
       }
     };

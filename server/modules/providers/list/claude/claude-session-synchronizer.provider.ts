@@ -43,7 +43,10 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
         continue;
       }
 
-      const timestamps = await readFileTimestamps(filePath);
+      const [timestamps, lastUserMessageAt] = await Promise.all([
+        readFileTimestamps(filePath),
+        this.readLastUserMessageTimestamp(filePath),
+      ]);
       sessionsDb.createSession(
         parsed.sessionId,
         this.provider,
@@ -51,7 +54,8 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
         parsed.sessionName,
         timestamps.createdAt,
         timestamps.updatedAt,
-        filePath
+        filePath,
+        lastUserMessageAt
       );
       processed += 1;
     }
@@ -73,7 +77,10 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
       return null;
     }
 
-    const timestamps = await readFileTimestamps(filePath);
+    const [timestamps, lastUserMessageAt] = await Promise.all([
+      readFileTimestamps(filePath),
+      this.readLastUserMessageTimestamp(filePath),
+    ]);
     return sessionsDb.createSession(
       parsed.sessionId,
       this.provider,
@@ -81,7 +88,8 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
       parsed.sessionName,
       timestamps.createdAt,
       timestamps.updatedAt,
-      filePath
+      filePath,
+      lastUserMessageAt
     );
   }
 
@@ -129,6 +137,27 @@ export class ClaudeSessionSynchronizer implements IProviderSessionSynchronizer {
       ...parsed,
       sessionName: normalizeSessionName(sessionName, 'Untitled Claude Session'),
     };
+  }
+
+  private async readLastUserMessageTimestamp(filePath: string): Promise<string | null> {
+    try {
+      const content = await readFile(filePath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      for (let index = lines.length - 1; index >= 0; index -= 1) {
+        const line = lines[index]?.trim();
+        if (!line) continue;
+        let parsed: unknown;
+        try { parsed = JSON.parse(line); } catch { continue; }
+        const data = parsed as Record<string, unknown>;
+        const message = data.message as Record<string, unknown> | undefined;
+        const role = typeof message?.role === 'string' ? message.role : undefined;
+        const timestamp = typeof data.timestamp === 'string' ? data.timestamp : undefined;
+        if (role === 'user' && timestamp) return timestamp;
+      }
+    } catch {
+      // ignore missing/unreadable files
+    }
+    return null;
   }
 
   private async extractSessionAiTitleFromEnd(

@@ -1,14 +1,26 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { api } from '../utils/api';
 
-const TasksSettingsContext = createContext({
+type InstallationStatus = Record<string, unknown> | null;
+
+type TasksSettingsContextValue = {
+  tasksEnabled: boolean;
+  setTasksEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  toggleTasksEnabled: () => void;
+  isTaskMasterInstalled: boolean | null;
+  isTaskMasterReady: boolean | null;
+  installationStatus: InstallationStatus;
+  isCheckingInstallation: boolean;
+};
+
+const TasksSettingsContext = createContext<TasksSettingsContextValue>({
   tasksEnabled: true,
   setTasksEnabled: () => {},
   toggleTasksEnabled: () => {},
   isTaskMasterInstalled: null,
   isTaskMasterReady: null,
   installationStatus: null,
-  isCheckingInstallation: true
+  isCheckingInstallation: true,
 });
 
 export const useTasksSettings = () => {
@@ -19,24 +31,21 @@ export const useTasksSettings = () => {
   return context;
 };
 
-export const TasksSettingsProvider = ({ children }) => {
-  const [tasksEnabled, setTasksEnabled] = useState(() => {
-    // Load from localStorage on initialization
+export const TasksSettingsProvider = ({ children }: { children: ReactNode }) => {
+  const [tasksEnabled, setTasksEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem('tasks-enabled');
-    return saved !== null ? JSON.parse(saved) : true; // Default to true
+    return saved !== null ? JSON.parse(saved) : true;
   });
-  
-  const [isTaskMasterInstalled, setIsTaskMasterInstalled] = useState(null);
-  const [isTaskMasterReady, setIsTaskMasterReady] = useState(null);
-  const [installationStatus, setInstallationStatus] = useState(null);
+
+  const [isTaskMasterInstalled, setIsTaskMasterInstalled] = useState<boolean | null>(null);
+  const [isTaskMasterReady, setIsTaskMasterReady] = useState<boolean | null>(null);
+  const [installationStatus, setInstallationStatus] = useState<InstallationStatus>(null);
   const [isCheckingInstallation, setIsCheckingInstallation] = useState(true);
 
-  // Save to localStorage whenever tasksEnabled changes
   useEffect(() => {
     localStorage.setItem('tasks-enabled', JSON.stringify(tasksEnabled));
   }, [tasksEnabled]);
 
-  // Check TaskMaster installation status asynchronously on component mount
   useEffect(() => {
     const checkInstallation = async () => {
       try {
@@ -46,12 +55,14 @@ export const TasksSettingsProvider = ({ children }) => {
           setInstallationStatus(data);
           setIsTaskMasterInstalled(data.installation?.isInstalled || false);
           setIsTaskMasterReady(data.isReady || false);
-          
-          // If TaskMaster is not installed and user hasn't explicitly enabled tasks,
-          // disable tasks automatically
-          const userEnabledTasks = localStorage.getItem('tasks-enabled');
-          if (!data.installation?.isInstalled && !userEnabledTasks) {
-            setTasksEnabled(false);
+
+          if (data.installation?.isInstalled) {
+            setTasksEnabled(true);
+          } else {
+            const userEnabledTasks = localStorage.getItem('tasks-enabled');
+            if (!userEnabledTasks) {
+              setTasksEnabled(false);
+            }
           }
         } else {
           console.error('Failed to check TaskMaster installation status');
@@ -67,29 +78,24 @@ export const TasksSettingsProvider = ({ children }) => {
       }
     };
 
-    // Run check asynchronously without blocking initial render
     setTimeout(checkInstallation, 0);
   }, []);
 
   const toggleTasksEnabled = () => {
-    setTasksEnabled(prev => !prev);
+    setTasksEnabled((prev) => !prev);
   };
 
-  const contextValue = {
+  const contextValue: TasksSettingsContextValue = {
     tasksEnabled,
     setTasksEnabled,
     toggleTasksEnabled,
     isTaskMasterInstalled,
     isTaskMasterReady,
     installationStatus,
-    isCheckingInstallation
+    isCheckingInstallation,
   };
 
-  return (
-    <TasksSettingsContext.Provider value={contextValue}>
-      {children}
-    </TasksSettingsContext.Provider>
-  );
+  return <TasksSettingsContext.Provider value={contextValue}>{children}</TasksSettingsContext.Provider>;
 };
 
 export default TasksSettingsContext;
