@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import type { MutableRefObject } from 'react';
 
 import { usePaletteOps } from '../../../contexts/PaletteOpsContext';
-import type { PendingPermissionRequest, SessionNavigationOptions } from '../types/types';
+import type { SessionNavigationOptions } from '../types/types';
 import type { ProjectSession, LLMProvider } from '../../../types/app';
 import type { SessionStore, NormalizedMessage } from '../../../stores/useSessionStore';
 
@@ -13,8 +13,8 @@ type PendingViewSession = {
 type LatestChatMessage = {
   type?: string;
   kind?: string;
-  data?: any;
-  message?: any;
+  data?: unknown;
+  message?: unknown;
   delta?: string;
   sessionId?: string;
   session_id?: string;
@@ -23,14 +23,14 @@ type LatestChatMessage = {
   input?: unknown;
   context?: unknown;
   error?: string;
-  tool?: any;
+  tool?: unknown;
   toolId?: string;
-  result?: any;
+  result?: unknown;
   exitCode?: number;
   isProcessing?: boolean;
   actualSessionId?: string;
   event?: string;
-  status?: any;
+  status?: { text?: string; tokens?: number; can_interrupt?: boolean } | null;
   isNewSession?: boolean;
   resultText?: string;
   isError?: boolean;
@@ -44,7 +44,6 @@ type LatestChatMessage = {
   tokenBudget?: unknown;
   newSessionId?: string;
   aborted?: boolean;
-  [key: string]: any;
 };
 
 interface UseChatRealtimeHandlersArgs {
@@ -57,7 +56,6 @@ interface UseChatRealtimeHandlersArgs {
   setCanAbortSession: (canAbort: boolean) => void;
   setClaudeStatus: (status: { text: string; tokens: number; can_interrupt: boolean } | null) => void;
   setTokenBudget: (budget: Record<string, unknown> | null) => void;
-  setPendingPermissionRequests: Dispatch<SetStateAction<PendingPermissionRequest[]>>;
   pendingViewSessionRef: MutableRefObject<PendingViewSession | null>;
   streamTimerRef: MutableRefObject<number | null>;
   accumulatedStreamRef: MutableRefObject<string>;
@@ -84,7 +82,6 @@ export function useChatRealtimeHandlers({
   setCanAbortSession,
   setClaudeStatus,
   setTokenBudget,
-  setPendingPermissionRequests,
   pendingViewSessionRef,
   streamTimerRef,
   accumulatedStreamRef,
@@ -111,7 +108,7 @@ export function useChatRealtimeHandlers({
     /*  Legacy messages (no `kind` field) — handle and return           */
     /* ---------------------------------------------------------------- */
 
-    const msg = latestMessage as any;
+    const msg = latestMessage;
 
     if (!msg.kind) {
       const messageType = String(msg.type || '');
@@ -120,15 +117,6 @@ export function useChatRealtimeHandlers({
         case 'websocket-reconnected':
           onWebSocketReconnect?.();
           return;
-
-        case 'pending-permissions-response': {
-          const permSessionId = msg.sessionId;
-          const isCurrentPermSession =
-            permSessionId === currentSessionId || (selectedSession && permSessionId === selectedSession.id);
-          if (permSessionId && !isCurrentPermSession) return;
-          setPendingPermissionRequests(msg.data || []);
-          return;
-        }
 
         case 'session-status': {
           const statusSessionId = msg.sessionId;
@@ -219,9 +207,7 @@ export function useChatRealtimeHandlers({
     const shouldPersist =
       msg.kind !== 'session_created'
       && msg.kind !== 'complete'
-      && msg.kind !== 'status'
-      && msg.kind !== 'permission_request'
-      && msg.kind !== 'permission_cancelled';
+      && msg.kind !== 'status';
 
     if (sid && shouldPersist) {
       sessionStore.appendRealtime(sid, msg as NormalizedMessage);
@@ -236,12 +222,11 @@ export function useChatRealtimeHandlers({
         // We no longer synthesize client-side placeholder IDs. Until the provider
         // announces `session_created`, the active id is expected to be null.
         if (!currentSessionId) {
-          console.log('Session created with ID:', newSessionId);
-          console.log('Existing session ID:', currentSessionId);
+          sessionStorage.setItem('pendingSessionId', newSessionId);
+          if (pendingViewSessionRef.current && !pendingViewSessionRef.current.sessionId) {
+            pendingViewSessionRef.current.sessionId = newSessionId;
+          }
           setCurrentSessionId(newSessionId);
-          setPendingPermissionRequests((prev) =>
-            prev.map((r) => (r.sessionId ? r : { ...r, sessionId: newSessionId })),
-          );
         }
         pendingViewSessionRef.current = null;
         onSessionActive?.(newSessionId);
@@ -272,7 +257,6 @@ export function useChatRealtimeHandlers({
         setIsLoading(false);
         setCanAbortSession(false);
         setClaudeStatus(null);
-        setPendingPermissionRequests([]);
         onSessionInactive?.(sid);
         onSessionNotProcessing?.(sid);
         pendingViewSessionRef.current = null;
@@ -322,32 +306,6 @@ export function useChatRealtimeHandlers({
         break;
       }
 
-      case 'permission_request': {
-        if (!msg.requestId) break;
-        setPendingPermissionRequests((prev) => {
-          if (prev.some((r: PendingPermissionRequest) => r.requestId === msg.requestId)) return prev;
-          return [...prev, {
-            requestId: msg.requestId,
-            toolName: msg.toolName || 'UnknownTool',
-            input: msg.input,
-            context: msg.context,
-            sessionId: sid || null,
-            receivedAt: new Date(),
-          }];
-        });
-        setIsLoading(true);
-        setCanAbortSession(true);
-        setClaudeStatus({ text: 'Waiting for permission', tokens: 0, can_interrupt: true });
-        break;
-      }
-
-      case 'permission_cancelled': {
-        if (msg.requestId) {
-          setPendingPermissionRequests((prev) => prev.filter((r: PendingPermissionRequest) => r.requestId !== msg.requestId));
-        }
-        break;
-      }
-
       case 'status': {
         if (msg.text === 'token_budget' && msg.tokenBudget) {
           setTokenBudget(msg.tokenBudget as Record<string, unknown>);
@@ -378,7 +336,6 @@ export function useChatRealtimeHandlers({
     setCanAbortSession,
     setClaudeStatus,
     setTokenBudget,
-    setPendingPermissionRequests,
     pendingViewSessionRef,
     streamTimerRef,
     accumulatedStreamRef,

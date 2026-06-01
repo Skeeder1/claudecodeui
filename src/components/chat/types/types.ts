@@ -2,8 +2,6 @@ import type { Project, ProjectSession, LLMProvider } from '../../../types/app';
 
 export type Provider = LLMProvider;
 
-export type PermissionMode = 'default' | 'acceptEdits' | 'auto' | 'bypassPermissions' | 'plan';
-
 export interface ChatImage {
   data: string;
   name: string;
@@ -56,36 +54,6 @@ export interface ChatMessage {
   [key: string]: unknown;
 }
 
-export interface ClaudeSettings {
-  allowedTools: string[];
-  disallowedTools: string[];
-  skipPermissions: boolean;
-  projectSortOrder: string;
-  lastUpdated?: string;
-  [key: string]: unknown;
-}
-
-export interface ClaudePermissionSuggestion {
-  toolName: string;
-  entry: string;
-  isAllowed: boolean;
-}
-
-export interface PermissionGrantResult {
-  success: boolean;
-  alreadyAllowed?: boolean;
-  updatedSettings?: ClaudeSettings;
-}
-
-export interface PendingPermissionRequest {
-  requestId: string;
-  toolName: string;
-  input?: unknown;
-  context?: unknown;
-  sessionId?: string | null;
-  receivedAt?: Date;
-}
-
 export interface QuestionOption {
   label: string;
   description?: string;
@@ -107,8 +75,8 @@ export interface ChatInterfaceProps {
   selectedSession: ProjectSession | null;
   ws: WebSocket | null;
   sendMessage: (message: unknown) => void;
-  latestMessage: any;
-  onFileOpen?: (filePath: string, diffInfo?: any) => void;
+  latestMessage: unknown;
+  onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
   onInputFocusChange?: (focused: boolean) => void;
   onSessionActive?: (sessionId?: string | null) => void;
   onSessionInactive?: (sessionId?: string | null) => void;

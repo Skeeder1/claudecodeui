@@ -134,6 +134,9 @@ export default function Shell({
   // Wire up the onOutput callback
   useEffect(() => {
     onOutputRef.current = schedulePromptCheck;
+    return () => {
+      onOutputRef.current = null;
+    };
   }, [schedulePromptCheck]);
 
   // Cleanup prompt check timer on unmount
@@ -269,7 +272,7 @@ export default function Shell({
       <div className="relative flex-1 overflow-hidden p-2">
         <div
           ref={terminalContainerRef}
-          className="h-full w-full focus:outline-none"
+          className={`h-full w-full focus:outline-none${overlayMode ? ' pointer-events-none' : ''}`}
           style={{ outline: 'none' }}
         />
 

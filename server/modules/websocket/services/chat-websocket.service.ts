@@ -15,11 +15,6 @@ type ChatIncomingMessage = AnyRecord & {
   options?: AnyRecord;
   provider?: string;
   sessionId?: string;
-  requestId?: string;
-  allow?: unknown;
-  updatedInput?: unknown;
-  message?: unknown;
-  rememberEntry?: unknown;
 };
 
 const DEFAULT_PROVIDER: LLMProvider = 'claude';
@@ -35,27 +30,22 @@ type ChatWebSocketDependencies = {
   abortCodexSession: (sessionId: string) => boolean;
   abortGeminiSession: (sessionId: string) => boolean;
   abortOpenCodeSession: (sessionId: string) => boolean;
-  resolveToolApproval: (
-    requestId: string,
-    payload: {
-      allow: boolean;
-      updatedInput?: unknown;
-      message?: string;
-      rememberEntry?: unknown;
-    }
-  ) => void;
   isClaudeSDKSessionActive: (sessionId: string) => boolean;
   isCursorSessionActive: (sessionId: string) => boolean;
   isCodexSessionActive: (sessionId: string) => boolean;
   isGeminiSessionActive: (sessionId: string) => boolean;
   isOpenCodeSessionActive: (sessionId: string) => boolean;
   reconnectSessionWriter: (sessionId: string, ws: WebSocket) => boolean;
-  getPendingApprovalsForSession: (sessionId: string) => unknown[];
   getActiveClaudeSDKSessions: () => unknown;
   getActiveCursorSessions: () => unknown;
   getActiveCodexSessions: () => unknown;
   getActiveGeminiSessions: () => unknown;
   getActiveOpenCodeSessions: () => unknown;
+  executeSdkBridge: (
+    sessionId: string,
+    action: string,
+    args?: AnyRecord
+  ) => Promise<{ ok: boolean; result?: unknown; error?: string }>;
 };
 
 /**
@@ -186,18 +176,6 @@ export function handleChatConnection(
         return;
       }
 
-      if (messageType === 'claude-permission-response') {
-        if (typeof data.requestId === 'string' && data.requestId.length > 0) {
-          dependencies.resolveToolApproval(data.requestId, {
-            allow: Boolean(data.allow),
-            updatedInput: data.updatedInput,
-            message: typeof data.message === 'string' ? data.message : undefined,
-            rememberEntry: data.rememberEntry,
-          });
-        }
-        return;
-      }
-
       if (messageType === 'cursor-abort') {
         const sessionId = typeof data.sessionId === 'string' ? data.sessionId : '';
         const success = dependencies.abortCursorSession(sessionId);
@@ -243,16 +221,23 @@ export function handleChatConnection(
         return;
       }
 
-      if (messageType === 'get-pending-permissions') {
+      if (messageType === 'sdk-bridge') {
         const sessionId = typeof data.sessionId === 'string' ? data.sessionId : '';
-        if (sessionId && dependencies.isClaudeSDKSessionActive(sessionId)) {
-          const pending = dependencies.getPendingApprovalsForSession(sessionId);
-          writer.send({
-            type: 'pending-permissions-response',
-            sessionId,
-            data: pending,
-          });
-        }
+        const action = typeof data.action === 'string' ? data.action : '';
+        const args = (data.args && typeof data.args === 'object') ? (data.args as AnyRecord) : {};
+        const requestId = typeof data.requestId === 'string' ? data.requestId : undefined;
+
+        const result = sessionId && action
+          ? await dependencies.executeSdkBridge(sessionId, action, args)
+          : { ok: false, error: 'invalid_request' as const };
+
+        writer.send({
+          type: 'sdk-bridge-result',
+          requestId,
+          sessionId,
+          action,
+          ...result,
+        });
         return;
       }
 

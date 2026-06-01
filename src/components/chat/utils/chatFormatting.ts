@@ -48,7 +48,7 @@ export function escapeRegExp(value: string) {
 
 export function formatUsageLimitText(text: string) {
   try {
-    if (typeof text !== 'string') return text;
+    if (typeof text !== 'string') return String(text ?? '');
     return text.replace(/Claude AI usage limit reached\|(\d{10,13})/g, (match, ts) => {
       let timestampMs = parseInt(ts, 10);
       if (!Number.isFinite(timestampMs)) return match;

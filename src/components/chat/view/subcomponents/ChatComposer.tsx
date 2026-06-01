@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useWebSocket } from '../../../../contexts/WebSocketContext';
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -12,11 +13,10 @@ import type {
   TouchEvent,
 } from 'react';
 import { ImageIcon, MessageSquareIcon, XIcon, ArrowDownIcon } from 'lucide-react';
-import type { PendingPermissionRequest, PermissionMode, Provider } from '../../types/types';
+import type { Provider } from '../../types/types';
 import CommandMenu from './CommandMenu';
 import ClaudeStatus from './ClaudeStatus';
 import ImageAttachment from './ImageAttachment';
-import PermissionRequestsBanner from './PermissionRequestsBanner';
 import ThinkingModeSelector from './ThinkingModeSelector';
 import TokenUsagePie from './TokenUsagePie';
 import {
@@ -46,18 +46,10 @@ interface SlashCommand {
 }
 
 interface ChatComposerProps {
-  pendingPermissionRequests: PendingPermissionRequest[];
-  handlePermissionDecision: (
-    requestIds: string | string[],
-    decision: { allow?: boolean; message?: string; rememberEntry?: string | null; updatedInput?: unknown },
-  ) => void;
-  handleGrantToolPermission: (suggestion: { entry: string; toolName: string }) => { success: boolean };
   claudeStatus: { text: string; tokens: number; can_interrupt: boolean } | null;
   isLoading: boolean;
   onAbortSession: () => void;
   provider: Provider | string;
-  permissionMode: PermissionMode | string;
-  onModeSwitch: () => void;
   thinkingMode: string;
   setThinkingMode: Dispatch<SetStateAction<string>>;
   tokenBudget: { used?: number; total?: number } | null;
@@ -104,15 +96,10 @@ interface ChatComposerProps {
 }
 
 export default function ChatComposer({
-  pendingPermissionRequests,
-  handlePermissionDecision,
-  handleGrantToolPermission,
   claudeStatus,
   isLoading,
   onAbortSession,
   provider,
-  permissionMode,
-  onModeSwitch,
   thinkingMode,
   setThinkingMode,
   tokenBudget,
@@ -158,6 +145,7 @@ export default function ChatComposer({
   sendByCtrlEnter,
 }: ChatComposerProps) {
   const { t } = useTranslation('chat');
+  const { isConnected } = useWebSocket();
   const textareaRect = textareaRef.current?.getBoundingClientRect();
   const commandMenuPosition = {
     top: textareaRect ? Math.max(16, textareaRect.top - 316) : 0,
@@ -165,36 +153,21 @@ export default function ChatComposer({
     bottom: textareaRect ? window.innerHeight - textareaRect.top + 8 : 90,
   };
 
-  // Detect if the AskUserQuestion interactive panel is active
-  const hasQuestionPanel = pendingPermissionRequests.some(
-    (r) => r.toolName === 'AskUserQuestion'
-  );
-
-  // Hide the thinking/status bar while any permission request is pending
-  const hasPendingPermissions = pendingPermissionRequests.length > 0;
-
   return (
     <div className="flex-shrink-0 p-2 pb-2 sm:p-4 sm:pb-4 md:p-4 md:pb-6">
-      {!hasPendingPermissions && (
-        <ClaudeStatus
-          status={claudeStatus}
-          isLoading={isLoading}
-          onAbort={onAbortSession}
-          provider={provider}
-        />
-      )}
-
-      {pendingPermissionRequests.length > 0 && (
-        <div className="mx-auto mb-3 max-w-4xl">
-          <PermissionRequestsBanner
-            pendingPermissionRequests={pendingPermissionRequests}
-            handlePermissionDecision={handlePermissionDecision}
-            handleGrantToolPermission={handleGrantToolPermission}
-          />
+      {!isConnected && (
+        <div className="mx-auto mb-2 max-w-4xl rounded-lg border border-yellow-300/60 bg-yellow-50 px-3 py-1.5 text-xs text-yellow-700 dark:border-yellow-600/40 dark:bg-yellow-900/15 dark:text-yellow-300">
+          Reconnecting to server…
         </div>
       )}
+      <ClaudeStatus
+        status={claudeStatus}
+        isLoading={isLoading}
+        onAbort={onAbortSession}
+        provider={provider}
+      />
 
-      {!hasQuestionPanel && <div className="relative mx-auto max-w-4xl">
+      <div className="relative mx-auto max-w-4xl">
         {isUserScrolledUp && hasMessages && (
           <div className="absolute -top-10 left-0 right-0 z-10 flex justify-center">
             <button
@@ -317,46 +290,6 @@ export default function ChatComposer({
               <ImageIcon />
             </PromptInputButton>
 
-            <button
-              type="button"
-              onClick={onModeSwitch}
-              className={`rounded-lg border p-2 text-xs font-medium transition-all duration-200 sm:px-2.5 sm:py-1 ${
-                permissionMode === 'default'
-                  ? 'border-border/60 bg-muted/50 text-muted-foreground hover:bg-muted'
-                  : permissionMode === 'acceptEdits'
-                    ? 'border-green-300/60 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-600/40 dark:bg-green-900/15 dark:text-green-300 dark:hover:bg-green-900/25'
-                    : permissionMode === 'auto'
-                      ? 'border-blue-300/60 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-600/40 dark:bg-blue-900/15 dark:text-blue-300 dark:hover:bg-blue-900/25'
-                      : permissionMode === 'bypassPermissions'
-                        ? 'border-orange-300/60 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-600/40 dark:bg-orange-900/15 dark:text-orange-300 dark:hover:bg-orange-900/25'
-                        : 'border-primary/20 bg-primary/5 text-primary hover:bg-primary/10'
-              }`}
-              title={t('input.clickToChangeMode')}
-            >
-              <div className="flex items-center gap-1.5">
-                <div
-                  className={`h-2.5 w-2.5 rounded-full sm:h-1.5 sm:w-1.5 ${
-                    permissionMode === 'default'
-                      ? 'bg-muted-foreground'
-                      : permissionMode === 'acceptEdits'
-                        ? 'bg-green-500'
-                        : permissionMode === 'auto'
-                          ? 'bg-blue-500'
-                          : permissionMode === 'bypassPermissions'
-                            ? 'bg-orange-500'
-                            : 'bg-primary'
-                  }`}
-                />
-                <span className="hidden whitespace-nowrap sm:inline">
-                  {permissionMode === 'default' && t('codex.modes.default')}
-                  {permissionMode === 'acceptEdits' && t('codex.modes.acceptEdits')}
-                  {permissionMode === 'auto' && t('codex.modes.auto')}
-                  {permissionMode === 'bypassPermissions' && t('codex.modes.bypassPermissions')}
-                  {permissionMode === 'plan' && t('codex.modes.plan')}
-                </span>
-              </div>
-            </button>
-
             {provider === 'claude' && (
               <ThinkingModeSelector selectedMode={thinkingMode} onModeChange={setThinkingMode} onClose={() => {}} className="" />
             )}
@@ -399,21 +332,16 @@ export default function ChatComposer({
               {sendByCtrlEnter ? t('input.hintText.ctrlEnter') : t('input.hintText.enter')}
             </div>
             <PromptInputSubmit
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || !isConnected}
               className="h-10 w-10 sm:h-10 sm:w-10"
               onMouseDown={(event) => {
-                event.preventDefault();
-                onSubmit(event as unknown as MouseEvent<HTMLButtonElement>);
-              }}
-              onTouchStart={(event) => {
-                event.preventDefault();
-                onSubmit(event as unknown as TouchEvent<HTMLButtonElement>);
+                event.preventDefault(); // Prevent textarea from losing focus — do NOT call onSubmit here (form submit handles it)
               }}
             />
           </div>
         </PromptInputFooter>
       </PromptInput>
-      </div>}
+      </div>
     </div>
   );
 }

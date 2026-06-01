@@ -1,25 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useWebSocket } from '../../../contexts/WebSocketContext';
 import type {
   ChangeEvent,
   ClipboardEvent,
-  Dispatch,
   FormEvent,
   KeyboardEvent,
   MouseEvent,
-  SetStateAction,
   TouchEvent,
 } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { authenticatedFetch } from '../../../utils/api';
 import { thinkingModes } from '../constants/thinkingModes';
-import { grantClaudeToolPermission } from '../utils/chatPermissions';
 import { safeLocalStorage } from '../utils/chatStorage';
-import type {
-  ChatMessage,
-  PendingPermissionRequest,
-  PermissionMode,
-} from '../types/types';
+import type { ChatImage, ChatMessage } from '../types/types';
 import type { Project, ProjectSession, LLMProvider, ProviderModelsCacheInfo } from '../../../types/app';
 import { escapeRegExp } from '../utils/chatFormatting';
 
@@ -35,8 +29,6 @@ interface UseChatComposerStateArgs {
   selectedSession: ProjectSession | null;
   currentSessionId: string | null;
   provider: LLMProvider;
-  permissionMode: PermissionMode | string;
-  cyclePermissionMode: () => void;
   cursorModel: string;
   claudeModel: string;
   codexModel: string;
@@ -59,7 +51,6 @@ interface UseChatComposerStateArgs {
   setCanAbortSession: (canAbort: boolean) => void;
   setClaudeStatus: (status: { text: string; tokens: number; can_interrupt: boolean } | null) => void;
   setIsUserScrolledUp: (isScrolledUp: boolean) => void;
-  setPendingPermissionRequests: Dispatch<SetStateAction<PendingPermissionRequest[]>>;
 }
 
 interface MentionableFile {
@@ -70,7 +61,7 @@ interface MentionableFile {
 interface CommandExecutionResult {
   type: 'builtin' | 'custom';
   action?: string;
-  data?: any;
+  data?: unknown;
   content?: string;
   hasBashCommands?: boolean;
   hasFileIncludes?: boolean;
@@ -173,8 +164,6 @@ export function useChatComposerState({
   selectedSession,
   currentSessionId,
   provider,
-  permissionMode,
-  cyclePermissionMode,
   cursorModel,
   claudeModel,
   codexModel,
@@ -197,7 +186,6 @@ export function useChatComposerState({
   setCanAbortSession,
   setClaudeStatus,
   setIsUserScrolledUp,
-  setPendingPermissionRequests,
 }: UseChatComposerStateArgs) {
   const [input, setInput] = useState(() => {
     if (typeof window !== 'undefined' && selectedProject) {
@@ -214,8 +202,11 @@ export function useChatComposerState({
   const [thinkingMode, setThinkingMode] = useState('none');
   const [commandModalPayload, setCommandModalPayload] = useState<CommandModalPayload | null>(null);
 
+  const { isConnected } = useWebSocket();
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputHighlightRef = useRef<HTMLDivElement>(null);
+  const isSubmittingRef = useRef(false);
   const handleSubmitRef = useRef<
     ((event: FormEvent<HTMLFormElement> | MouseEvent | TouchEvent | KeyboardEvent<HTMLTextAreaElement>) => Promise<void>) | null
   >(null);
@@ -529,12 +520,29 @@ export function useChatComposerState({
       event: FormEvent<HTMLFormElement> | MouseEvent | TouchEvent | KeyboardEvent<HTMLTextAreaElement>,
     ) => {
       event.preventDefault();
+      if (isSubmittingRef.current) return;
       const currentInput = inputValueRef.current;
       if (!currentInput.trim() || isLoading || !selectedProject) {
         return;
       }
+      if (!isConnected) {
+        addMessage({
+          type: 'error',
+          content: 'Not connected to server — please wait for reconnection and try again.',
+          timestamp: new Date(),
+        });
+        return;
+      }
+      isSubmittingRef.current = true;
+      // Ensure the guard is always released, even if an unhandled exception occurs below.
+      const releaseSubmitGuard = () => { isSubmittingRef.current = false; };
 
-      // Intercept slash commands only when "/" is the first input character.
+      // Slash command dispatcher. Three routing rules:
+      //   - 'skill' commands: NOT intercepted — sent as text to SDK (existing behavior)
+      //   - 'sdk' commands:   NOT intercepted — sent verbatim to SDK, which handles
+      //                       them natively and emits SDKLocalCommandOutputMessage
+      //   - everything else (built-in, custom): intercepted by executeCommand,
+      //                       handled by frontend or via /api/commands/execute
       // Also accept exact "help" as a convenience alias for users who expect CLI-style help.
       const commandInput = currentInput.trimEnd();
       const isHelpAlias = commandInput.trim().toLowerCase() === 'help';
@@ -553,7 +561,9 @@ export function useChatComposerState({
                 metadata: { type: 'builtin' },
               } as SlashCommand)
             : undefined);
-        if (matchedCommand && matchedCommand.type !== 'skill') {
+        const isPassthroughToSdk = matchedCommand
+          && (matchedCommand.type === 'skill' || matchedCommand.type === 'sdk');
+        if (matchedCommand && !isPassthroughToSdk) {
           executeCommand(matchedCommand, isHelpAlias ? '/help' : commandInput);
           setInput('');
           inputValueRef.current = '';
@@ -565,6 +575,7 @@ export function useChatComposerState({
           if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
           }
+          releaseSubmitGuard();
           return;
         }
       }
@@ -575,7 +586,7 @@ export function useChatComposerState({
         messageContent = `${selectedThinkingMode.prefix}: ${currentInput}`;
       }
 
-      let uploadedImages: unknown[] = [];
+      let uploadedImages: ChatImage[] = [];
       if (attachedImages.length > 0) {
         const formData = new FormData();
         attachedImages.forEach((file) => {
@@ -594,7 +605,7 @@ export function useChatComposerState({
           }
 
           const result = await response.json();
-          uploadedImages = result.images;
+          uploadedImages = result.images as ChatImage[];
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
           console.error('Image upload failed:', error);
@@ -603,6 +614,7 @@ export function useChatComposerState({
             content: `Failed to upload images: ${message}`,
             timestamp: new Date(),
           });
+          releaseSubmitGuard();
           return;
         }
       }
@@ -613,7 +625,7 @@ export function useChatComposerState({
       const userMessage: ChatMessage = {
         type: 'user',
         content: currentInput,
-        images: uploadedImages as any,
+        images: uploadedImages,
         timestamp: new Date(),
       };
 
@@ -639,37 +651,11 @@ export function useChatComposerState({
         onSessionProcessing?.(effectiveSessionId);
       }
 
-      const getToolsSettings = () => {
-        try {
-          const settingsKey =
-            provider === 'cursor'
-              ? 'cursor-tools-settings'
-              : provider === 'codex'
-                ? 'codex-settings'
-                : provider === 'gemini'
-                  ? 'gemini-settings'
-                  : provider === 'opencode'
-                    ? 'opencode-settings'
-                  : 'claude-settings';
-          const savedSettings = safeLocalStorage.getItem(settingsKey);
-          if (savedSettings) {
-            return JSON.parse(savedSettings);
-          }
-        } catch (error) {
-          console.error('Error loading tools settings:', error);
-        }
-
-        return {
-          allowedTools: [],
-          disallowedTools: [],
-          skipPermissions: false,
-        };
-      };
-
-      const toolsSettings = getToolsSettings();
       const resolvedProjectPath = selectedProject.fullPath || selectedProject.path || '';
       const sessionSummary = getNotificationSessionSummary(selectedSession, currentInput);
 
+      // Permissions are fully delegated to the upstream CLI/SDK — we no longer send
+      // permissionMode, allowedTools, disallowedTools or skipPermissions from the UI.
       if (provider === 'cursor') {
         sendMessage({
           type: 'cursor-command',
@@ -681,9 +667,7 @@ export function useChatComposerState({
             sessionId: effectiveSessionId,
             resume: Boolean(effectiveSessionId),
             model: cursorModel,
-            skipPermissions: toolsSettings?.skipPermissions || false,
             sessionSummary,
-            toolsSettings,
           },
         });
       } else if (provider === 'codex') {
@@ -698,7 +682,6 @@ export function useChatComposerState({
             resume: Boolean(effectiveSessionId),
             model: codexModel,
             sessionSummary,
-            permissionMode: permissionMode === 'plan' ? 'default' : permissionMode,
           },
         });
       } else if (provider === 'gemini') {
@@ -713,8 +696,6 @@ export function useChatComposerState({
             resume: Boolean(effectiveSessionId),
             model: geminiModel,
             sessionSummary,
-            permissionMode,
-            toolsSettings,
           },
         });
       } else if (provider === 'opencode') {
@@ -740,8 +721,6 @@ export function useChatComposerState({
             cwd: resolvedProjectPath,
             sessionId: effectiveSessionId,
             resume: Boolean(effectiveSessionId),
-            toolsSettings,
-            permissionMode,
             model: claudeModel,
             sessionSummary,
             images: uploadedImages,
@@ -749,6 +728,7 @@ export function useChatComposerState({
         });
       }
 
+      releaseSubmitGuard();
       setInput('');
       inputValueRef.current = '';
       resetCommandMenuState();
@@ -756,7 +736,6 @@ export function useChatComposerState({
       setUploadingImages(new Map());
       setImageErrors(new Map());
       setIsTextareaExpanded(false);
-      setThinkingMode('none');
 
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -774,11 +753,11 @@ export function useChatComposerState({
       executeCommand,
       geminiModel,
       opencodeModel,
+      isConnected,
       isLoading,
       onSessionActive,
       onSessionProcessing,
       pendingViewSessionRef,
-      permissionMode,
       provider,
       resetCommandMenuState,
       scrollToBottom,
@@ -876,12 +855,6 @@ export function useChatComposerState({
         return;
       }
 
-      if (event.key === 'Tab' && !showFileDropdown && !showCommandMenu) {
-        event.preventDefault();
-        cyclePermissionMode();
-        return;
-      }
-
       if (event.key === 'Enter') {
         if (event.nativeEvent.isComposing) {
           return;
@@ -897,7 +870,6 @@ export function useChatComposerState({
       }
     },
     [
-      cyclePermissionMode,
       handleCommandMenuKeyDown,
       handleFileMentionsKeyDown,
       handleSubmit,
@@ -944,6 +916,13 @@ export function useChatComposerState({
       return;
     }
 
+    if (!isConnected) {
+      console.warn('[abort] WebSocket not connected — abort skipped');
+      return;
+    }
+
+    const pendingSessionId =
+      typeof window !== 'undefined' ? sessionStorage.getItem('pendingSessionId') : null;
     const cursorSessionId =
       typeof window !== 'undefined' ? sessionStorage.getItem('cursorSessionId') : null;
 
@@ -966,50 +945,7 @@ export function useChatComposerState({
       sessionId: targetSessionId,
       provider,
     });
-  }, [canAbortSession, currentSessionId, provider, selectedSession?.id, sendMessage]);
-
-  const handleGrantToolPermission = useCallback(
-    (suggestion: { entry: string; toolName: string }) => {
-      if (!suggestion || provider !== 'claude') {
-        return { success: false };
-      }
-      return grantClaudeToolPermission(suggestion.entry);
-    },
-    [provider],
-  );
-
-  const handlePermissionDecision = useCallback(
-    (
-      requestIds: string | string[],
-      decision: { allow?: boolean; message?: string; rememberEntry?: string | null; updatedInput?: unknown },
-    ) => {
-      const ids = Array.isArray(requestIds) ? requestIds : [requestIds];
-      const validIds = ids.filter(Boolean);
-      if (validIds.length === 0) {
-        return;
-      }
-
-      validIds.forEach((requestId) => {
-        sendMessage({
-          type: 'claude-permission-response',
-          requestId,
-          allow: Boolean(decision?.allow),
-          updatedInput: decision?.updatedInput,
-          message: decision?.message,
-          rememberEntry: decision?.rememberEntry,
-        });
-      });
-
-      setPendingPermissionRequests((previous) => {
-        const next = previous.filter((request) => !validIds.includes(request.requestId));
-        if (next.length === 0) {
-          setClaudeStatus(null);
-        }
-        return next;
-      });
-    },
-    [sendMessage, setClaudeStatus, setPendingPermissionRequests],
-  );
+  }, [canAbortSession, currentSessionId, isConnected, pendingViewSessionRef, provider, selectedSession?.id, sendMessage]);
 
   const [isInputFocused, setIsInputFocused] = useState(false);
 
@@ -1060,8 +996,6 @@ export function useChatComposerState({
     syncInputOverlayScroll,
     handleClearInput,
     handleAbortSession,
-    handlePermissionDecision,
-    handleGrantToolPermission,
     handleInputFocusChange,
     isInputFocused,
     commandModalPayload,

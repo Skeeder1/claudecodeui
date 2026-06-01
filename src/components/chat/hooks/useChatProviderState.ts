@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../../../utils/api';
-import type { PendingPermissionRequest, PermissionMode } from '../types/types';
 import type {
   ProjectSession,
   LLMProvider,
-  Project,
   ProviderModelsCacheInfo,
   ProviderModelsDefinition,
 } from '../../../types/app';
@@ -17,22 +15,9 @@ const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
   opencode: 'anthropic/claude-sonnet-4-5',
 };
 
-const getPermissionModesForProvider = (provider: LLMProvider): PermissionMode[] => {
-  if (provider === 'codex') {
-    return ['default', 'acceptEdits', 'bypassPermissions'];
-  }
-  if (provider === 'claude') {
-    return ['default', 'auto', 'acceptEdits', 'bypassPermissions', 'plan'];
-  }
-  if (provider === 'opencode') {
-    return ['default'];
-  }
-  return ['default', 'acceptEdits', 'bypassPermissions', 'plan'];
-};
 
 interface UseChatProviderStateArgs {
   selectedSession: ProjectSession | null;
-  selectedProject: Project | null;
 }
 
 type ProviderModelsApiResponse = {
@@ -54,9 +39,7 @@ type ChangeActiveModelApiResponse = {
   };
 };
 
-export function useChatProviderState({ selectedSession, selectedProject }: UseChatProviderStateArgs) {
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>('default');
-  const [pendingPermissionRequests, setPendingPermissionRequests] = useState<PendingPermissionRequest[]>([]);
+export function useChatProviderState({ selectedSession }: UseChatProviderStateArgs) {
   const [provider, setProvider] = useState<LLMProvider>(() => {
     return (localStorage.getItem('selected-provider') as LLMProvider) || 'claude';
   });
@@ -262,16 +245,6 @@ export function useChatProviderState({ selectedSession, selectedProject }: UseCh
   }, [providerModelCatalog.opencode, opencodeModel]);
 
   useEffect(() => {
-    if (!selectedSession?.id) {
-      return;
-    }
-
-    const savedMode = localStorage.getItem(`permissionMode-${selectedSession.id}`) as PermissionMode | null;
-    const validModes = getPermissionModesForProvider(provider);
-    setPermissionMode(savedMode && validModes.includes(savedMode) ? savedMode : 'default');
-  }, [selectedSession?.id, provider]);
-
-  useEffect(() => {
     if (!selectedSession?.__provider || selectedSession.__provider === provider) {
       return;
     }
@@ -284,15 +257,8 @@ export function useChatProviderState({ selectedSession, selectedProject }: UseCh
     if (lastProviderRef.current === provider) {
       return;
     }
-    setPendingPermissionRequests([]);
     lastProviderRef.current = provider;
   }, [provider]);
-
-  useEffect(() => {
-    setPendingPermissionRequests((previous) =>
-      previous.filter((request) => !request.sessionId || request.sessionId === selectedSession?.id),
-    );
-  }, [selectedSession?.id]);
 
   useEffect(() => {
     if (provider !== 'cursor') {
@@ -316,18 +282,6 @@ export function useChatProviderState({ selectedSession, selectedProject }: UseCh
       });
   }, [provider]);
 
-  const cyclePermissionMode = useCallback(() => {
-    const modes = getPermissionModesForProvider(provider);
-
-    const currentIndex = modes.indexOf(permissionMode);
-    const nextIndex = (currentIndex + 1) % modes.length;
-    const nextMode = modes[nextIndex];
-    setPermissionMode(nextMode);
-
-    if (selectedSession?.id) {
-      localStorage.setItem(`permissionMode-${selectedSession.id}`, nextMode);
-    }
-  }, [permissionMode, provider, selectedSession?.id]);
 
   const selectProviderModel = useCallback(async (
     targetProvider: LLMProvider,
@@ -364,6 +318,7 @@ export function useChatProviderState({ selectedSession, selectedProject }: UseCh
     };
   }, [setStoredProviderModel]);
 
+
   return {
     provider,
     setProvider,
@@ -377,11 +332,6 @@ export function useChatProviderState({ selectedSession, selectedProject }: UseCh
     setGeminiModel,
     opencodeModel,
     setOpenCodeModel,
-    permissionMode,
-    setPermissionMode,
-    pendingPermissionRequests,
-    setPendingPermissionRequests,
-    cyclePermissionMode,
     providerModelCatalog,
     providerModelCacheCatalog,
     providerModelsLoading,

@@ -3,23 +3,16 @@ import { useTranslation } from 'react-i18next';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
 import type {
   ChatMessage,
-  ClaudePermissionSuggestion,
-  PermissionGrantResult,
   Provider,
 } from '../../types/types';
 import { formatUsageLimitText } from '../../utils/chatFormatting';
-import { getClaudePermissionSuggestion } from '../../utils/chatPermissions';
 import type { Project } from '../../../../types/app';
 import { ToolRenderer, shouldHideToolResult } from '../../tools';
+import type { DiffLine } from '../../tools/types';
+import { formatLocalTime } from '../../../../lib/dateTime';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '../../../../shared/view/ui';
 import { Markdown } from './Markdown';
 import MessageCopyControl from './MessageCopyControl';
-
-type DiffLine = {
-  type: string;
-  content: string;
-  lineNum: number;
-};
 
 type MessageComponentProps = {
   message: ChatMessage;
@@ -27,7 +20,6 @@ type MessageComponentProps = {
   createDiff: (oldStr: string, newStr: string) => DiffLine[];
   onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
   onShowSettings?: () => void;
-  onGrantToolPermission?: (suggestion: ClaudePermissionSuggestion) => PermissionGrantResult | null | undefined;
   autoExpandTools?: boolean;
   showRawParameters?: boolean;
   showThinking?: boolean;
@@ -41,10 +33,9 @@ type InteractiveOption = {
   isSelected: boolean;
 };
 
-type PermissionGrantState = 'idle' | 'granted' | 'error';
 const COPY_HIDDEN_TOOL_NAMES = new Set(['Bash', 'Edit', 'Write', 'ApplyPatch']);
 
-const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, onShowSettings, onGrantToolPermission, autoExpandTools, showRawParameters, showThinking, selectedProject, provider }: MessageComponentProps) => {
+const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, onShowSettings, autoExpandTools, showRawParameters, showThinking, selectedProject, provider }: MessageComponentProps) => {
   const { t } = useTranslation('chat');
   const isGrouped = prevMessage && prevMessage.type === message.type &&
     ((prevMessage.type === 'assistant') ||
@@ -53,8 +44,6 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
       (prevMessage.type === 'error'));
   const messageRef = useRef<HTMLDivElement | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const permissionSuggestion = getClaudePermissionSuggestion(message, provider);
-  const [permissionGrantState, setPermissionGrantState] = useState<PermissionGrantState>('idle');
   const userCopyContent = String(message.content || '');
   const formattedMessageContent = useMemo(
     () => formatUsageLimitText(String(message.content || '')),
@@ -72,10 +61,6 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
     !isCommandOrFileEditToolResponse &&
     !message.isThinking;
 
-
-  useEffect(() => {
-    setPermissionGrantState('idle');
-  }, [permissionSuggestion?.entry, message.toolId]);
 
   useEffect(() => {
     const node = messageRef.current;
@@ -103,7 +88,7 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
     };
   }, [autoExpandTools, isExpanded, message.isToolUse]);
 
-  const formattedTime = useMemo(() => new Date(message.timestamp).toLocaleTimeString(), [message.timestamp]);
+  const formattedTime = useMemo(() => formatLocalTime(message.timestamp), [message.timestamp]);
   const shouldHideThinkingMessage = Boolean(message.isThinking && !showThinking);
 
   if (shouldHideThinkingMessage) {
@@ -241,55 +226,6 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
                         <Markdown className="prose prose-sm prose-red max-w-none dark:prose-invert">
                           {String(message.toolResult.content || '')}
                         </Markdown>
-                        {permissionSuggestion && (
-                          <div className="mt-4 border-t border-red-200/60 pt-3 dark:border-red-800/60">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (!onGrantToolPermission) return;
-                                  const result = onGrantToolPermission(permissionSuggestion);
-                                  if (result?.success) {
-                                    setPermissionGrantState('granted');
-                                  } else {
-                                    setPermissionGrantState('error');
-                                  }
-                                }}
-                                disabled={permissionSuggestion.isAllowed || permissionGrantState === 'granted'}
-                                className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${permissionSuggestion.isAllowed || permissionGrantState === 'granted'
-                                  ? 'cursor-default border-green-300/70 bg-green-100 text-green-800 dark:border-green-800/60 dark:bg-green-900/30 dark:text-green-200'
-                                  : 'border-red-300/70 bg-white/80 text-red-700 hover:bg-white dark:border-red-800/60 dark:bg-gray-900/40 dark:text-red-200 dark:hover:bg-gray-900/70'
-                                  }`}
-                              >
-                                {permissionSuggestion.isAllowed || permissionGrantState === 'granted'
-                                  ? t('permissions.added')
-                                  : t('permissions.grant', { tool: permissionSuggestion.toolName })}
-                              </button>
-                              {onShowSettings && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); onShowSettings(); }}
-                                  className="text-xs text-red-700 underline hover:text-red-800 dark:text-red-200 dark:hover:text-red-100"
-                                >
-                                  {t('permissions.openSettings')}
-                                </button>
-                              )}
-                            </div>
-                            <div className="mt-2 text-xs text-red-700/90 dark:text-red-200/80">
-                              {t('permissions.addTo', { entry: permissionSuggestion.entry })}
-                            </div>
-                            {permissionGrantState === 'error' && (
-                              <div className="mt-2 text-xs text-red-700 dark:text-red-200">
-                                {t('permissions.error')}
-                              </div>
-                            )}
-                            {(permissionSuggestion.isAllowed || permissionGrantState === 'granted') && (
-                              <div className="mt-2 text-xs text-green-700 dark:text-green-200">
-                                {t('permissions.retry')}
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : (
@@ -422,7 +358,7 @@ const MessageComponent = memo(({ message, prevMessage, createDiff, onFileOpen, o
                   const content = formattedMessageContent;
 
                   // Detect if content is pure JSON (starts with { or [)
-                  const trimmedContent = content.trim();
+                  const trimmedContent = (content ?? '').trim();
                   if ((trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) &&
                     (trimmedContent.endsWith('}') || trimmedContent.endsWith(']'))) {
                     try {

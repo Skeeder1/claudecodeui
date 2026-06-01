@@ -13,7 +13,6 @@
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -31,115 +30,6 @@ import { providerAuthService } from './modules/providers/services/provider-auth.
 import { createNormalizedMessage } from './shared/utils.js';
 
 const activeSessions = new Map();
-const pendingToolApprovals = new Map();
-
-const TOOL_APPROVAL_TIMEOUT_MS = parseInt(process.env.CLAUDE_TOOL_APPROVAL_TIMEOUT_MS, 10) || 55000;
-
-const TOOLS_REQUIRING_INTERACTION = new Set(['AskUserQuestion', 'ExitPlanMode']);
-
-function createRequestId() {
-  if (typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return crypto.randomBytes(16).toString('hex');
-}
-
-function waitForToolApproval(requestId, options = {}) {
-  const { timeoutMs = TOOL_APPROVAL_TIMEOUT_MS, signal, onCancel, metadata } = options;
-
-  return new Promise(resolve => {
-    let settled = false;
-
-    const finalize = (decision) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve(decision);
-    };
-
-    let timeout;
-
-    const cleanup = () => {
-      pendingToolApprovals.delete(requestId);
-      if (timeout) clearTimeout(timeout);
-      if (signal && abortHandler) {
-        signal.removeEventListener('abort', abortHandler);
-      }
-    };
-
-    // timeoutMs 0 = wait indefinitely (interactive tools)
-    if (timeoutMs > 0) {
-      timeout = setTimeout(() => {
-        onCancel?.('timeout');
-        finalize(null);
-      }, timeoutMs);
-    }
-
-    const abortHandler = () => {
-      onCancel?.('cancelled');
-      finalize({ cancelled: true });
-    };
-
-    if (signal) {
-      if (signal.aborted) {
-        onCancel?.('cancelled');
-        finalize({ cancelled: true });
-        return;
-      }
-      signal.addEventListener('abort', abortHandler, { once: true });
-    }
-
-    const resolver = (decision) => {
-      finalize(decision);
-    };
-    // Attach metadata for getPendingApprovalsForSession lookup
-    if (metadata) {
-      Object.assign(resolver, metadata);
-    }
-    pendingToolApprovals.set(requestId, resolver);
-  });
-}
-
-function resolveToolApproval(requestId, decision) {
-  const resolver = pendingToolApprovals.get(requestId);
-  if (resolver) {
-    resolver(decision);
-  }
-}
-
-// Match stored permission entries against a tool + input combo.
-// This only supports exact tool names and the Bash(command:*) shorthand
-// used by the UI; it intentionally does not implement full glob semantics,
-// introduced to stay consistent with the UI's "Allow rule" format.
-function matchesToolPermission(entry, toolName, input) {
-  if (!entry || !toolName) {
-    return false;
-  }
-
-  if (entry === toolName) {
-    return true;
-  }
-
-  const bashMatch = entry.match(/^Bash\((.+):\*\)$/);
-  if (toolName === 'Bash' && bashMatch) {
-    const allowedPrefix = bashMatch[1];
-    let command = '';
-
-    if (typeof input === 'string') {
-      command = input.trim();
-    } else if (input && typeof input === 'object' && typeof input.command === 'string') {
-      command = input.command.trim();
-    }
-
-    if (!command) {
-      return false;
-    }
-
-    return command.startsWith(allowedPrefix);
-  }
-
-  return false;
-}
 
 /**
  * Maps CLI options to SDK-compatible options format
@@ -147,58 +37,30 @@ function matchesToolPermission(entry, toolName, input) {
  * @returns {Object} SDK-compatible options
  */
 function mapCliOptionsToSDK(options = {}) {
-  const { sessionId, cwd, toolsSettings, permissionMode } = options;
+  const { sessionId, cwd } = options;
 
   const sdkOptions = {};
 
   // Forward all host env vars (e.g. ANTHROPIC_BASE_URL) to the subprocess.
   // Since SDK 0.2.113, options.env replaces process.env instead of overlaying it.
-  sdkOptions.env = { ...process.env };
+  // CLAUDE_CODE_ENTRYPOINT=cli: the SDK only sets this when not already defined
+  // (see sdk.mjs: `if (!env.CLAUDE_CODE_ENTRYPOINT) env.CLAUDE_CODE_ENTRYPOINT = "sdk-ts"`).
+  // Pre-setting it to 'cli' routes billing to Pool 1 (subscription) instead of Pool 2 (API credits).
+  sdkOptions.env = { ...process.env, CLAUDE_CODE_ENTRYPOINT: 'cli' };
 
   // Resolve the executable eagerly on Windows because the SDK uses raw child_process.spawn,
   // which does not reliably follow npm's shell wrappers like cross-spawn does.
   sdkOptions.pathToClaudeCodeExecutable = resolveClaudeCodeExecutablePath(process.env.CLAUDE_CLI_PATH);
 
-  // Map working directory
   if (cwd) {
     sdkOptions.cwd = cwd;
   }
 
-  // Map permission mode
-  if (permissionMode && permissionMode !== 'default') {
-    sdkOptions.permissionMode = permissionMode;
-  }
+  // Permission management is delegated entirely to the Claude Code SDK/CLI.
+  // We always bypass the UI permission flow — no canUseTool callback, no 60s timeout.
+  sdkOptions.permissionMode = 'bypassPermissions';
 
-  // Map tool settings
-  const settings = toolsSettings || {
-    allowedTools: [],
-    disallowedTools: [],
-    skipPermissions: false
-  };
-
-  // Handle tool permissions
-  if (settings.skipPermissions && permissionMode !== 'plan') {
-    // When skipping permissions, use bypassPermissions mode
-    sdkOptions.permissionMode = 'bypassPermissions';
-  }
-
-  let allowedTools = [...(settings.allowedTools || [])];
-
-  // Add plan mode default tools
-  if (permissionMode === 'plan') {
-    const planModeTools = ['Read', 'Task', 'exit_plan_mode', 'TodoRead', 'TodoWrite', 'WebFetch', 'WebSearch'];
-    for (const tool of planModeTools) {
-      if (!allowedTools.includes(tool)) {
-        allowedTools.push(tool);
-      }
-    }
-  }
-
-  sdkOptions.allowedTools = allowedTools;
-
-  // Use the tools preset to make all default built-in tools available (including AskUserQuestion).
-  // This was introduced in SDK 0.1.57. Omitting this preserves existing behavior (all tools available),
-  // but being explicit ensures forward compatibility and clarity.
+  // Use the tools preset to make all default built-in tools available.
   sdkOptions.tools = { type: 'preset', preset: 'claude_code' };
 
   sdkOptions.disallowedTools = settings.disallowedTools || [];
@@ -208,22 +70,111 @@ function mapCliOptionsToSDK(options = {}) {
   sdkOptions.model = options.model || CLAUDE_FALLBACK_MODELS.DEFAULT;
   // Model logged at query start below
 
-  // Map system prompt configuration
   sdkOptions.systemPrompt = {
     type: 'preset',
     preset: 'claude_code'  // Required to use CLAUDE.md
   };
 
-  // Map setting sources for CLAUDE.md loading
-  // This loads CLAUDE.md from project, user (~/.config/claude/CLAUDE.md), and local directories
+  // Loads CLAUDE.md from project, user, and local directories.
   sdkOptions.settingSources = ['project', 'user', 'local'];
 
-  // Map resume session
   if (sessionId) {
     sdkOptions.resume = sessionId;
   }
 
   return sdkOptions;
+}
+
+/**
+ * Discovers SDK-exposed slash commands, agents, and MCP servers for a session
+ * and broadcasts them to the connected client. Called once per session after
+ * the SDK becomes interactive. The SDK control methods used here are only
+ * available on an active query instance — see sdk.d.ts:1878-1958.
+ *
+ * Each capability is fetched independently so a partial failure doesn't block
+ * the others (e.g., older SDK versions without mcpServerStatus still send commands).
+ *
+ * @param {Object} queryInstance - Active SDK Query instance
+ * @param {Object} ws - WebSocket writer for the client
+ * @param {string} sessionId - The active session ID
+ */
+async function discoverSdkCapabilities(queryInstance, ws, sessionId) {
+  if (!queryInstance) return;
+
+  const fetchOrNull = async (label, fn) => {
+    try {
+      return await fn();
+    } catch (err) {
+      console.warn(`[claude-sdk] discovery: ${label} failed:`, err?.message || err);
+      return null;
+    }
+  };
+
+  const [commands, agents, mcpServers] = await Promise.all([
+    fetchOrNull('supportedCommands', () => queryInstance.supportedCommands?.()),
+    fetchOrNull('supportedAgents',   () => queryInstance.supportedAgents?.()),
+    fetchOrNull('mcpServerStatus',   () => queryInstance.mcpServerStatus?.()),
+  ]);
+
+  if (!commands && !agents && !mcpServers) return;
+
+  ws.send({
+    type: 'sdk-capabilities',
+    sessionId,
+    provider: 'claude',
+    commands: commands || [],
+    agents: agents || [],
+    mcpServers: mcpServers || [],
+  });
+}
+
+/**
+ * Bridge for SDK control-request methods. Invoked by the chat WS handler when
+ * the user runs a command that maps to a Query control method (interrupt,
+ * setModel, setPermissionMode, etc). Keeping this as a single switch means
+ * adding support for a new SDK method is a one-line change.
+ *
+ * @param {string} sessionId - Target session
+ * @param {string} action    - Method name (e.g. 'interrupt', 'setModel')
+ * @param {Object} args      - Action-specific arguments
+ * @returns {Promise<{ok: boolean, result?: any, error?: string}>}
+ */
+async function executeSdkBridge(sessionId, action, args = {}) {
+  const session = activeSessions.get(sessionId);
+  if (!session || !session.instance) {
+    return { ok: false, error: 'session_not_found' };
+  }
+
+  const q = session.instance;
+  try {
+    switch (action) {
+      case 'interrupt':
+        await q.interrupt();
+        return { ok: true };
+      case 'setModel':
+        await q.setModel(args.model);
+        return { ok: true, result: { model: args.model ?? null } };
+      case 'setPermissionMode':
+        await q.setPermissionMode(args.mode);
+        return { ok: true, result: { mode: args.mode } };
+      case 'getContextUsage': {
+        const usage = await q.getContextUsage?.();
+        return { ok: true, result: usage };
+      }
+      case 'supportedAgents': {
+        const list = await q.supportedAgents?.();
+        return { ok: true, result: list };
+      }
+      case 'mcpServerStatus': {
+        const list = await q.mcpServerStatus?.();
+        return { ok: true, result: list };
+      }
+      default:
+        return { ok: false, error: `unknown_action:${action}` };
+    }
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err) };
+  }
 }
 
 /**
@@ -482,6 +433,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
   let sessionCreatedSent = false;
   let tempImagePaths = [];
   let tempDir = null;
+  const t0 = Date.now();
 
   const emitNotification = (event) => {
     notifyUserIfEnabled({
@@ -491,12 +443,30 @@ async function queryClaudeSDK(command, options = {}, ws) {
     });
   };
 
+  // Send a progress phase message visible in the chat UI and server logs.
+  const sendPhase = (phase, text, extra = {}) => {
+    const elapsed = Date.now() - t0;
+    console.log(`[claude-sdk] [${capturedSessionId || sessionId || 'NEW'}] ${phase} (+${elapsed}ms) — ${text}`);
+    try {
+      ws.send(createNormalizedMessage({
+        kind: 'status',
+        phase,
+        text,
+        sessionId: capturedSessionId || sessionId || null,
+        provider: 'claude',
+        canInterrupt: false,
+        ...extra,
+      }));
+    } catch (_) { /* ws may be closed */ }
+  };
+
   try {
     const resolvedModel = await providerModelsService.resolveResumeModel(
       'claude',
       sessionId,
       options.model,
     );
+    sendPhase('init', 'Starting query...');
 
     // Map CLI options to SDK format
     const sdkOptions = mapCliOptionsToSDK({
@@ -504,11 +474,11 @@ async function queryClaudeSDK(command, options = {}, ws) {
       model: resolvedModel || options.model,
     });
 
-    // Load MCP configuration
-    const mcpServers = await loadMcpConfig(options.cwd);
-    if (mcpServers) {
-      sdkOptions.mcpServers = mcpServers;
-    }
+    // NOTE: mcpServers are intentionally NOT loaded here.
+    // sdkOptions.settingSources = ['project', 'user', 'local'] already instructs
+    // the claude CLI subprocess to read ~/.claude.json (user source) which includes
+    // all global MCP servers. Passing them again via sdkOptions.mcpServers would
+    // cause every server to be started twice, adding 20–60s of startup time per query.
 
     // Handle images - save to temp files and modify prompt
     const imageResult = await handleImages(command, options.images, options.cwd);
@@ -536,83 +506,9 @@ async function queryClaudeSDK(command, options = {}, ws) {
       }]
     };
 
-    // Caveat: in 'auto' and 'bypassPermissions' modes the SDK resolves approval
-    // at the permission-mode step and skips this callback, so interactive tools
-    // (AskUserQuestion, ExitPlanMode) won't reach the UI — the classifier/bypass
-    // auto-approves them and the model acts on a generated answer. Move these
-    // tools to a PreToolUse hook (runs before the mode check) if we need them
-    // to work in those modes.
-    sdkOptions.canUseTool = async (toolName, input, context) => {
-      const requiresInteraction = TOOLS_REQUIRING_INTERACTION.has(toolName);
-
-      if (!requiresInteraction) {
-        if (sdkOptions.permissionMode === 'bypassPermissions') {
-          return { behavior: 'allow', updatedInput: input };
-        }
-
-        const isDisallowed = (sdkOptions.disallowedTools || []).some(entry =>
-          matchesToolPermission(entry, toolName, input)
-        );
-        if (isDisallowed) {
-          return { behavior: 'deny', message: 'Tool disallowed by settings' };
-        }
-
-        const isAllowed = (sdkOptions.allowedTools || []).some(entry =>
-          matchesToolPermission(entry, toolName, input)
-        );
-        if (isAllowed) {
-          return { behavior: 'allow', updatedInput: input };
-        }
-      }
-
-      const requestId = createRequestId();
-      ws.send(createNormalizedMessage({ kind: 'permission_request', requestId, toolName, input, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
-      emitNotification(createNotificationEvent({
-        provider: 'claude',
-        sessionId: capturedSessionId || sessionId || null,
-        kind: 'action_required',
-        code: 'permission.required',
-        meta: { toolName, sessionName: sessionSummary },
-        severity: 'warning',
-        requiresUserAction: true,
-        dedupeKey: `claude:permission:${capturedSessionId || sessionId || 'none'}:${requestId}`
-      }));
-
-      const decision = await waitForToolApproval(requestId, {
-        timeoutMs: requiresInteraction ? 0 : undefined,
-        signal: context?.signal,
-        metadata: {
-          _sessionId: capturedSessionId || sessionId || null,
-          _toolName: toolName,
-          _input: input,
-          _receivedAt: new Date(),
-        },
-        onCancel: (reason) => {
-          ws.send(createNormalizedMessage({ kind: 'permission_cancelled', requestId, reason, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));
-        }
-      });
-      if (!decision) {
-        return { behavior: 'deny', message: 'Permission request timed out' };
-      }
-
-      if (decision.cancelled) {
-        return { behavior: 'deny', message: 'Permission request cancelled' };
-      }
-
-      if (decision.allow) {
-        if (decision.rememberEntry && typeof decision.rememberEntry === 'string') {
-          if (!sdkOptions.allowedTools.includes(decision.rememberEntry)) {
-            sdkOptions.allowedTools.push(decision.rememberEntry);
-          }
-          if (Array.isArray(sdkOptions.disallowedTools)) {
-            sdkOptions.disallowedTools = sdkOptions.disallowedTools.filter(entry => entry !== decision.rememberEntry);
-          }
-        }
-        return { behavior: 'allow', updatedInput: decision.updatedInput ?? input };
-      }
-
-      return { behavior: 'deny', message: decision.message ?? 'User denied tool use' };
-    };
+    // Permissions are fully delegated to the Claude Code SDK/CLI via permissionMode:
+    // 'bypassPermissions'. No canUseTool callback is registered, so no UI prompt or
+    // 60s auto-deny is possible. The SDK handles tool execution natively.
 
     // Set stream-close timeout for interactive tools (Query constructor reads it synchronously). Claude Agent SDK has a default of 5s and this overrides it
     const prevStreamTimeout = process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
@@ -642,19 +538,34 @@ async function queryClaudeSDK(command, options = {}, ws) {
       delete process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
     }
 
-    // Track the query instance for abort capability
-    if (capturedSessionId) {
-      addSession(capturedSessionId, queryInstance, tempImagePaths, tempDir, ws);
-    }
+    sendPhase('query_ready', 'Query initializing...');
+
+    // Track the query instance for abort capability.
+    // For resume sessions capturedSessionId is already known; register immediately.
+    // For new sessions we use a temporary key so abort works during MCP startup,
+    // before the first SDK message delivers the real session_id.
+    const tempSessionKey = capturedSessionId || `pending_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    addSession(tempSessionKey, queryInstance, tempImagePaths, tempDir, ws);
 
     // Process streaming messages
-    console.log('Starting async generator loop for session:', capturedSessionId || 'NEW');
+    let firstMessage = true;
     for await (const message of queryInstance) {
-      // Capture session ID from first message
-      if (message.session_id && !capturedSessionId) {
+      if (firstMessage) {
+        firstMessage = false;
+        sendPhase('streaming', 'Streaming response...');
+        console.log(`[claude-sdk] [${capturedSessionId || 'NEW'}] first message received (+${Date.now() - t0}ms)`);
+      }
 
+      // Capture session ID from first message
+      if (message.session_id && (!capturedSessionId || capturedSessionId === tempSessionKey)) {
+        const prevKey = capturedSessionId || tempSessionKey;
         capturedSessionId = message.session_id;
-        addSession(capturedSessionId, queryInstance, tempImagePaths, tempDir, ws);
+
+        // Migrate from temp key to real session ID
+        if (prevKey !== capturedSessionId) {
+          removeSession(prevKey);
+          addSession(capturedSessionId, queryInstance, tempImagePaths, tempDir, ws);
+        }
 
         // Set session ID on writer
         if (ws.setSessionId && typeof ws.setSessionId === 'function') {
@@ -666,8 +577,13 @@ async function queryClaudeSDK(command, options = {}, ws) {
           sessionCreatedSent = true;
           ws.send(createNormalizedMessage({ kind: 'session_created', newSessionId: capturedSessionId, sessionId: capturedSessionId, provider: 'claude' }));
         }
-      } else {
-        // session_id already captured
+
+        // Discover SDK-native slash commands once per session, broadcast to client.
+        // The SDK auto-includes commands from MCP plugins, agents, and built-in features —
+        // this gives the slash menu zero-maintenance growth as the SDK evolves.
+        discoverSdkCapabilities(queryInstance, ws, capturedSessionId).catch((err) => {
+          console.warn('[claude-sdk] SDK capability discovery failed:', err?.message || err);
+        });
       }
 
       // Transform and normalize message via adapter
@@ -697,13 +613,13 @@ async function queryClaudeSDK(command, options = {}, ws) {
       }
     }
 
-    // Clean up session on completion
-    if (capturedSessionId) {
-      removeSession(capturedSessionId);
-    }
+    // Clean up session on completion (remove whichever key is still registered)
+    removeSession(capturedSessionId || tempSessionKey);
 
     // Clean up temporary image files
     await cleanupTempFiles(tempImagePaths, tempDir);
+
+    console.log(`[claude-sdk] [${capturedSessionId || 'NEW'}] complete (+${Date.now() - t0}ms)`);
 
     // Send completion event
     ws.send(createNormalizedMessage({ kind: 'complete', exitCode: 0, isNewSession: !sessionId && !!command, sessionId: capturedSessionId, provider: 'claude' }));
@@ -714,15 +630,12 @@ async function queryClaudeSDK(command, options = {}, ws) {
       sessionName: sessionSummary,
       stopReason: 'completed'
     });
-    // Complete
 
   } catch (error) {
-    console.error('SDK query error:', error);
+    console.error(`[claude-sdk] [${capturedSessionId || 'NEW'}] ERROR (+${Date.now() - t0}ms):`, error.message || error);
 
-    // Clean up session on error
-    if (capturedSessionId) {
-      removeSession(capturedSessionId);
-    }
+    // Clean up session on error (remove whichever key is still registered)
+    removeSession(capturedSessionId || tempSessionKey);
 
     // Clean up temporary image files on error
     await cleanupTempFiles(tempImagePaths, tempDir);
@@ -746,20 +659,37 @@ async function queryClaudeSDK(command, options = {}, ws) {
 }
 
 /**
- * Aborts an active SDK session
- * @param {string} sessionId - Session identifier
+ * Aborts an active SDK session.
+ * Falls back to the most-recently-started pending session when sessionId is unknown
+ * (new sessions whose real session_id hasn't been delivered yet).
+ * @param {string} sessionId - Session identifier (may be empty for in-flight new sessions)
  * @returns {boolean} True if session was aborted, false if not found
  */
 async function abortClaudeSDKSession(sessionId) {
-  const session = getSession(sessionId);
+  let session = getSession(sessionId);
+  let resolvedKey = sessionId;
+
+  // For new sessions the frontend sends an empty/null sessionId because the
+  // real ID hasn't been returned yet. Fall back to the most-recent pending key.
+  if (!session) {
+    const pendingKey = Array.from(activeSessions.keys())
+      .filter(k => k.startsWith('pending_'))
+      .sort()
+      .at(-1);
+
+    if (pendingKey) {
+      session = getSession(pendingKey);
+      resolvedKey = pendingKey;
+    }
+  }
 
   if (!session) {
-    console.log(`Session ${sessionId} not found`);
+    console.log(`[claude-sdk] abort: session not found (sessionId=${sessionId || 'empty'})`);
     return false;
   }
 
   try {
-    console.log(`Aborting SDK session: ${sessionId}`);
+    console.log(`[claude-sdk] aborting session: ${resolvedKey}`);
 
     // Call interrupt() on the query instance
     await session.instance.interrupt();
@@ -771,7 +701,7 @@ async function abortClaudeSDKSession(sessionId) {
     await cleanupTempFiles(session.tempImagePaths, session.tempDir);
 
     // Clean up session
-    removeSession(sessionId);
+    removeSession(resolvedKey);
 
     return true;
   } catch (error) {
@@ -799,28 +729,6 @@ function getActiveClaudeSDKSessions() {
 }
 
 /**
- * Get pending tool approvals for a specific session.
- * @param {string} sessionId - The session ID
- * @returns {Array} Array of pending permission request objects
- */
-function getPendingApprovalsForSession(sessionId) {
-  const pending = [];
-  for (const [requestId, resolver] of pendingToolApprovals.entries()) {
-    if (resolver._sessionId === sessionId) {
-      pending.push({
-        requestId,
-        toolName: resolver._toolName || 'UnknownTool',
-        input: resolver._input,
-        context: resolver._context,
-        sessionId,
-        receivedAt: resolver._receivedAt || new Date(),
-      });
-    }
-  }
-  return pending;
-}
-
-/**
  * Reconnect a session's WebSocketWriter to a new raw WebSocket.
  * Called when client reconnects (e.g. page refresh) while SDK is still running.
  * @param {string} sessionId - The session ID
@@ -841,7 +749,6 @@ export {
   abortClaudeSDKSession,
   isClaudeSDKSessionActive,
   getActiveClaudeSDKSessions,
-  resolveToolApproval,
-  getPendingApprovalsForSession,
-  reconnectSessionWriter
+  reconnectSessionWriter,
+  executeSdkBridge
 };

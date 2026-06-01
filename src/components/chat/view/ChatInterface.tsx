@@ -1,8 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useTasksSettings } from '../../../contexts/TasksSettingsContext';
-import PermissionContext from '../../../contexts/PermissionContext';
 import { QuickSettingsPanel } from '../../quick-settings-panel';
 import type { ChatInterfaceProps, Provider  } from '../types/types';
 import type { LLMProvider } from '../../../types/app';
@@ -74,10 +73,6 @@ function ChatInterface({
     setGeminiModel,
     opencodeModel,
     setOpenCodeModel,
-    permissionMode,
-    pendingPermissionRequests,
-    setPendingPermissionRequests,
-    cyclePermissionMode,
     providerModelCatalog,
     providerModelCacheCatalog,
     providerModelsLoading,
@@ -86,7 +81,6 @@ function ChatInterface({
     selectProviderModel,
   } = useChatProviderState({
     selectedSession,
-    selectedProject,
   });
 
   const {
@@ -174,8 +168,6 @@ function ChatInterface({
     syncInputOverlayScroll,
     handleClearInput,
     handleAbortSession,
-    handlePermissionDecision,
-    handleGrantToolPermission,
     handleInputFocusChange,
     isInputFocused: _isInputFocused,
     commandModalPayload,
@@ -185,8 +177,6 @@ function ChatInterface({
     selectedSession,
     currentSessionId,
     provider,
-    permissionMode,
-    cyclePermissionMode,
     cursorModel,
     claudeModel,
     codexModel,
@@ -209,7 +199,6 @@ function ChatInterface({
     setCanAbortSession,
     setClaudeStatus,
     setIsUserScrolledUp,
-    setPendingPermissionRequests,
   });
 
   // On WebSocket reconnect, re-fetch the current session's messages from the server
@@ -223,9 +212,16 @@ function ChatInterface({
       projectId: selectedProject.projectId,
       projectPath: selectedProject.fullPath || selectedProject.path || '',
     });
-    setIsLoading(false);
-    setCanAbortSession(false);
-  }, [selectedProject, selectedSession, sessionStore, setIsLoading, setCanAbortSession]);
+    // Ask the server whether the session is still active — do NOT assume it's done.
+    // If active, the server re-attaches its writer to the new WS (reconnectSessionWriter)
+    // and returns session-status { isProcessing: true }, which re-shows the Stop button
+    // and resumes streaming. If inactive, session-status { isProcessing: false } cleans up.
+    sendMessage({
+      type: 'check-session-status',
+      sessionId: selectedSession.id,
+      provider: (selectedSession.__provider || providerVal) as string,
+    });
+  }, [selectedProject, selectedSession, sessionStore, sendMessage]);
 
   useChatRealtimeHandlers({
     latestMessage,
@@ -237,7 +233,6 @@ function ChatInterface({
     setCanAbortSession,
     setClaudeStatus,
     setTokenBudget,
-    setPendingPermissionRequests,
     pendingViewSessionRef,
     streamTimerRef,
     accumulatedStreamRef,
@@ -276,11 +271,6 @@ function ChatInterface({
     };
   }, [resetStreamingState]);
 
-  const permissionContextValue = useMemo(() => ({
-    pendingPermissionRequests,
-    handlePermissionDecision,
-  }), [pendingPermissionRequests, handlePermissionDecision]);
-
   if (!selectedProject) {
     const selectedProviderLabel =
       provider === 'cursor'
@@ -308,7 +298,7 @@ function ChatInterface({
   }
 
   return (
-    <PermissionContext.Provider value={permissionContextValue}>
+    <>
       <div className="flex h-full flex-col">
         <ChatMessagesPane
           scrollContainerRef={scrollContainerRef}
@@ -352,7 +342,6 @@ function ChatInterface({
           createDiff={createDiff}
           onFileOpen={onFileOpen}
           onShowSettings={onShowSettings}
-          onGrantToolPermission={handleGrantToolPermission}
           autoExpandTools={autoExpandTools}
           showRawParameters={showRawParameters}
           showThinking={showThinking}
@@ -360,15 +349,10 @@ function ChatInterface({
         />
 
         <ChatComposer
-          pendingPermissionRequests={pendingPermissionRequests}
-          handlePermissionDecision={handlePermissionDecision}
-          handleGrantToolPermission={handleGrantToolPermission}
           claudeStatus={claudeStatus}
           isLoading={isLoading}
           onAbortSession={handleAbortSession}
           provider={provider}
-          permissionMode={permissionMode}
-          onModeSwitch={cyclePermissionMode}
           thinkingMode={thinkingMode}
           setThinkingMode={setThinkingMode}
           tokenBudget={tokenBudget}
@@ -442,7 +426,7 @@ function ChatInterface({
         currentSessionId={currentSessionId || selectedSession?.id || null}
         onSelectProviderModel={selectProviderModel}
       />
-    </PermissionContext.Provider>
+    </>
   );
 }
 

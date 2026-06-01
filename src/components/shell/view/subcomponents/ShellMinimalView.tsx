@@ -87,10 +87,11 @@ export default function ShellMinimalView({
                 onClick={async () => {
                   const copied = await copyAuthUrlToClipboard(displayAuthUrl);
                   setAuthUrlCopyStatus(copied ? 'copied' : 'failed');
+                  setTimeout(() => setAuthUrlCopyStatus('idle'), 2000);
                 }}
                 className="flex-1 rounded bg-gray-700 px-3 py-2 text-xs font-medium text-white hover:bg-gray-600"
               >
-                {authUrlCopyStatus === 'copied' ? 'Copied' : 'Copy URL'}
+                {authUrlCopyStatus === 'copied' ? 'Copied ✓' : authUrlCopyStatus === 'failed' ? 'Failed' : 'Copy URL'}
               </button>
             </div>
           </div>

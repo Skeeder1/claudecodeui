@@ -13,6 +13,8 @@ import { getIntrinsicMessageKey } from '../../utils/messageKeys';
 
 import MessageComponent from './MessageComponent';
 import ProviderSelectionEmptyState from './ProviderSelectionEmptyState';
+import { Spinner } from '../../../../shared/view/ui';
+import type { DiffCalculator } from '../../tools/types';
 
 interface ChatMessagesPaneProps {
   scrollContainerRef: RefObject<HTMLDivElement>;
@@ -53,10 +55,9 @@ interface ChatMessagesPaneProps {
   isLoadingAllMessages: boolean;
   loadAllJustFinished: boolean;
   showLoadAllOverlay: boolean;
-  createDiff: any;
+  createDiff: DiffCalculator;
   onFileOpen?: (filePath: string, diffInfo?: unknown) => void;
   onShowSettings?: () => void;
-  onGrantToolPermission: (suggestion: { entry: string; toolName: string }) => { success: boolean };
   autoExpandTools?: boolean;
   showRawParameters?: boolean;
   showThinking?: boolean;
@@ -105,7 +106,6 @@ export default function ChatMessagesPane({
   createDiff,
   onFileOpen,
   onShowSettings,
-  onGrantToolPermission,
   autoExpandTools,
   showRawParameters,
   showThinking,
@@ -150,7 +150,7 @@ export default function ChatMessagesPane({
       {isLoadingSessionMessages && chatMessages.length === 0 ? (
         <div className="mt-8 text-center text-gray-500 dark:text-gray-400">
           <div className="flex items-center justify-center space-x-2">
-            <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
+            <Spinner size="sm" color="gray" />
             <p>{t('session.loading.sessionMessages')}</p>
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function ChatMessagesPane({
           {isLoadingMoreMessages && !isLoadingAllMessages && !allMessagesLoaded && (
             <div className="py-3 text-center text-gray-500 dark:text-gray-400">
               <div className="flex items-center justify-center space-x-2">
-                <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-400" />
+                <Spinner size="sm" color="gray" />
                 <p className="text-sm">{t('session.loading.olderMessages')}</p>
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function ChatMessagesPane({
                   disabled={isLoadingAllMessages}
                 >
                   {isLoadingAllMessages && (
-                    <div className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <Spinner size="xs" className="border-white/30 border-t-white" />
                   )}
                   <span>
                     {isLoadingAllMessages
@@ -259,7 +259,6 @@ export default function ChatMessagesPane({
                 createDiff={createDiff}
                 onFileOpen={onFileOpen}
                 onShowSettings={onShowSettings}
-                onGrantToolPermission={onGrantToolPermission}
                 autoExpandTools={autoExpandTools}
                 showRawParameters={showRawParameters}
                 showThinking={showThinking}

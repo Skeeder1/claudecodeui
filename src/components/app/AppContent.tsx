@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,6 @@ function AppContentInner() {
   const { t } = useTranslation('common');
   const { isMobile } = useDeviceSettings({ trackPWA: false });
   const { ws, sendMessage, latestMessage, isConnected } = useWebSocket();
-  const wasConnectedRef = useRef(false);
 
   const {
     activeSessions,
@@ -99,23 +98,6 @@ function AppContentInner() {
     };
   }, [navigate, refreshProjectsSilently, setActiveTab, setSidebarOpen]);
 
-  // Permission recovery: query pending permissions on WebSocket reconnect or session change
-  useEffect(() => {
-    const isReconnect = isConnected && !wasConnectedRef.current;
-
-    if (isReconnect) {
-      wasConnectedRef.current = true;
-    } else if (!isConnected) {
-      wasConnectedRef.current = false;
-    }
-
-    if (isConnected && selectedSession?.id) {
-      sendMessage({
-        type: 'get-pending-permissions',
-        sessionId: selectedSession.id
-      });
-    }
-  }, [isConnected, selectedSession?.id, sendMessage]);
 
   // Adjust the app container to stay above the virtual keyboard on iOS Safari.
   // On Chrome for Android the layout viewport already shrinks when the keyboard opens,
