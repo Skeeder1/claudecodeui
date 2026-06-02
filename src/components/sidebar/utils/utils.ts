@@ -19,9 +19,7 @@ export const readProjectSortOrder = (): ProjectSortOrder => {
 
 const LEGACY_STARRED_PROJECTS_STORAGE_KEY = 'starredProjects';
 
-/**
- * Reads legacy project stars from localStorage (used only for one-time migration to backend).
- */
+// One-time migration source: reads legacy localStorage stars before they are moved to backend.
 export const readLegacyStarredProjectIds = (): string[] => {
   try {
     const saved = localStorage.getItem(LEGACY_STARRED_PROJECTS_STORAGE_KEY);
@@ -42,9 +40,6 @@ export const readLegacyStarredProjectIds = (): string[] => {
   }
 };
 
-/**
- * Clears the legacy localStorage stars key after migration to backend completes.
- */
 export const clearLegacyStarredProjectIds = () => {
   try {
     localStorage.removeItem(LEGACY_STARRED_PROJECTS_STORAGE_KEY);

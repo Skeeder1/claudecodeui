@@ -1,8 +1,5 @@
 import { MINUTE_MS, HOUR_MS, DAY_MS } from '../constants/time';
 
-/**
- * Formats a date string as a short locale date (e.g. "Jan 15, 2025").
- */
 export function formatLocalDate(
   dateString: string,
   options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' },
@@ -10,17 +7,11 @@ export function formatLocalDate(
   return new Date(dateString).toLocaleDateString('en-US', options);
 }
 
-/**
- * Formats a date string as a short locale time (e.g. "3:45 PM").
- */
 export function formatLocalTime(dateString: string | number): string {
   return new Date(dateString).toLocaleTimeString();
 }
 
-/**
- * Returns a compact relative age string: <1m, 5m, 3hr, 2d.
- * Pass `currentTime` for reactive updates; omit to use Date.now().
- */
+// Pass `currentTime` for reactive updates; omit to use Date.now().
 export function formatCompactAge(
   dateString: string | null,
   currentTime?: Date,

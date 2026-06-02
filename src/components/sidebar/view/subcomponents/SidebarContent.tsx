@@ -47,10 +47,6 @@ type ArchivedSessionGroup = {
   latestActivity: string | null;
 };
 
-/**
- * Groups archived sessions by project metadata so the archive view preserves
- * the same mental model as the active sidebar: projects first, then sessions.
- */
 function groupArchivedSessionsByProject(sessions: ArchivedSessionListItem[]): ArchivedSessionGroup[] {
   const groups = new Map<string, ArchivedSessionGroup>();
 

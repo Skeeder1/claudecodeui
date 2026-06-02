@@ -555,9 +555,6 @@ export function getToolConfig(toolName: string): ToolDisplayConfig {
   return TOOL_CONFIGS[toolName] || TOOL_CONFIGS.Default;
 }
 
-/**
- * Check if a tool result should be hidden
- */
 export function shouldHideToolResult(toolName: string, toolResult: unknown): boolean {
   const config = getToolConfig(toolName);
 
