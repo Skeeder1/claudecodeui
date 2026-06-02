@@ -12,19 +12,7 @@ import i18n from './i18n/config.js';
 
 const DEPLOYMENT_ASSET_DIRECTORIES = new Set(['assets', 'static', 'icons', 'images']);
 
-/**
- * Detect the router basename from explicit runtime config or deployment hints.
- *
- * CloudCLI can be served from a path prefix by a reverse proxy, for example:
- *   /ai/manifest.json
- *   /ai/assets/index-abc123.js
- *   /ai/icons/icon-192x192.png
- *
- * React Router needs that prefix as its basename, but the packaged app should
- * also keep working when served directly from the domain root. The direct-root
- * case is easy to misread because asset URLs such as /icons/icon-192x192.png
- * contain a directory even though there is no application basename.
- */
+// Detects the basename when CloudCLI is served from a path prefix (/ai/...) by a reverse proxy.
 function detectRouterBasename() {
   const explicitBasename = typeof window !== 'undefined' ? window.__ROUTER_BASENAME__ || '' : '';
   if (explicitBasename) {

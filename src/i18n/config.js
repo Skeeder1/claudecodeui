@@ -1,14 +1,3 @@
-/**
- * i18n Configuration
- *
- * Configures i18next for internationalization support.
- * Features:
- * - Lazy-loading of translation namespaces
- * - Language detection from localStorage
- * - Fallback to English for missing translations
- * - Development mode warnings for missing keys
- */
-
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 // eslint-disable-next-line import-x/order

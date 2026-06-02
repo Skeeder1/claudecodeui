@@ -1,17 +1,3 @@
-/**
- * Claude SDK Integration
- *
- * This module provides SDK-based integration with Claude using the @anthropic-ai/claude-agent-sdk.
- * It mirrors the interface of claude-cli.js but uses the SDK internally for better performance
- * and maintainability.
- *
- * Key features:
- * - Direct SDK integration without child processes
- * - Session management with abort capability
- * - Options mapping between CLI and SDK formats
- * - WebSocket message streaming
- */
-
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -31,11 +17,6 @@ import { createNormalizedMessage } from './shared/utils.js';
 
 const activeSessions = new Map();
 
-/**
- * Maps CLI options to SDK-compatible options format
- * @param {Object} options - CLI options
- * @returns {Object} SDK-compatible options
- */
 function mapCliOptionsToSDK(options = {}) {
   const { sessionId, cwd } = options;
 
@@ -85,19 +66,7 @@ function mapCliOptionsToSDK(options = {}) {
   return sdkOptions;
 }
 
-/**
- * Discovers SDK-exposed slash commands, agents, and MCP servers for a session
- * and broadcasts them to the connected client. Called once per session after
- * the SDK becomes interactive. The SDK control methods used here are only
- * available on an active query instance — see sdk.d.ts:1878-1958.
- *
- * Each capability is fetched independently so a partial failure doesn't block
- * the others (e.g., older SDK versions without mcpServerStatus still send commands).
- *
- * @param {Object} queryInstance - Active SDK Query instance
- * @param {Object} ws - WebSocket writer for the client
- * @param {string} sessionId - The active session ID
- */
+// SDK control methods only exist on an active query instance; each capability fetched independently so partial failure (older SDK) doesn't block others.
 async function discoverSdkCapabilities(queryInstance, ws, sessionId) {
   if (!queryInstance) return;
 
@@ -128,17 +97,7 @@ async function discoverSdkCapabilities(queryInstance, ws, sessionId) {
   });
 }
 
-/**
- * Bridge for SDK control-request methods. Invoked by the chat WS handler when
- * the user runs a command that maps to a Query control method (interrupt,
- * setModel, setPermissionMode, etc). Keeping this as a single switch means
- * adding support for a new SDK method is a one-line change.
- *
- * @param {string} sessionId - Target session
- * @param {string} action    - Method name (e.g. 'interrupt', 'setModel')
- * @param {Object} args      - Action-specific arguments
- * @returns {Promise<{ok: boolean, result?: any, error?: string}>}
- */
+// Single-switch bridge so adding a new SDK control method is a one-line change.
 async function executeSdkBridge(sessionId, action, args = {}) {
   const session = activeSessions.get(sessionId);
   if (!session || !session.instance) {
@@ -177,13 +136,6 @@ async function executeSdkBridge(sessionId, action, args = {}) {
   }
 }
 
-/**
- * Adds a session to the active sessions map
- * @param {string} sessionId - Session identifier
- * @param {Object} queryInstance - SDK query instance
- * @param {Array<string>} tempImagePaths - Temp image file paths for cleanup
- * @param {string} tempDir - Temp directory for cleanup
- */
 function addSession(sessionId, queryInstance, tempImagePaths = [], tempDir = null, writer = null) {
   activeSessions.set(sessionId, {
     instance: queryInstance,
@@ -195,36 +147,18 @@ function addSession(sessionId, queryInstance, tempImagePaths = [], tempDir = nul
   });
 }
 
-/**
- * Removes a session from the active sessions map
- * @param {string} sessionId - Session identifier
- */
 function removeSession(sessionId) {
   activeSessions.delete(sessionId);
 }
 
-/**
- * Gets a session from the active sessions map
- * @param {string} sessionId - Session identifier
- * @returns {Object|undefined} Session data or undefined
- */
 function getSession(sessionId) {
   return activeSessions.get(sessionId);
 }
 
-/**
- * Gets all active session IDs
- * @returns {Array<string>} Array of active session IDs
- */
 function getAllSessions() {
   return Array.from(activeSessions.keys());
 }
 
-/**
- * Transforms SDK messages to WebSocket format expected by frontend
- * @param {Object} sdkMessage - SDK message object
- * @returns {Object} Transformed message ready for WebSocket
- */
 function transformMessage(sdkMessage) {
   // Extract parent_tool_use_id for subagent tool grouping
   if (sdkMessage.parent_tool_use_id) {
@@ -241,13 +175,7 @@ function readNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/**
- * Extracts token usage from SDK messages.
- * Prefers per-step `message.usage` (Claude message payload), then falls back
- * to result-level usage/modelUsage for compatibility across SDK versions.
- * @param {Object} sdkMessage - SDK stream message
- * @returns {Object|null} Token budget object or null
- */
+// Prefers per-step message.usage; falls back to modelUsage for compatibility across SDK versions.
 function extractTokenBudget(sdkMessage) {
   if (!sdkMessage || typeof sdkMessage !== 'object') {
     return null;
@@ -301,14 +229,6 @@ function extractTokenBudget(sdkMessage) {
   };
 }
 
-/**
- * Handles image processing for SDK queries
- * Saves base64 images to temporary files and returns modified prompt with file paths
- * @param {string} command - Original user prompt
- * @param {Array} images - Array of image objects with base64 data
- * @param {string} cwd - Working directory for temp file creation
- * @returns {Promise<Object>} {modifiedCommand, tempImagePaths, tempDir}
- */
 async function handleImages(command, images, cwd) {
   const tempImagePaths = [];
   let tempDir = null;
@@ -357,11 +277,6 @@ async function handleImages(command, images, cwd) {
   }
 }
 
-/**
- * Cleans up temporary image files
- * @param {Array<string>} tempImagePaths - Array of temp file paths to delete
- * @param {string} tempDir - Temp directory to remove
- */
 async function cleanupTempFiles(tempImagePaths, tempDir) {
   if (!tempImagePaths || tempImagePaths.length === 0) {
     return;
@@ -388,11 +303,6 @@ async function cleanupTempFiles(tempImagePaths, tempDir) {
   }
 }
 
-/**
- * Loads MCP server configurations from ~/.claude.json
- * @param {string} cwd - Current working directory for project-specific configs
- * @returns {Object|null} MCP servers object or null if none found
- */
 async function loadMcpConfig(cwd) {
   try {
     const claudeConfigPath = path.join(os.homedir(), '.claude.json');
@@ -445,13 +355,6 @@ async function loadMcpConfig(cwd) {
   }
 }
 
-/**
- * Executes a Claude query using the SDK
- * @param {string} command - User prompt/command
- * @param {Object} options - Query options
- * @param {Object} ws - WebSocket connection
- * @returns {Promise<void>}
- */
 async function queryClaudeSDK(command, options = {}, ws) {
   const { sessionId, sessionSummary } = options;
   let capturedSessionId = sessionId;
@@ -677,13 +580,7 @@ async function queryClaudeSDK(command, options = {}, ws) {
   }
 }
 
-/**
- * Aborts an active SDK session.
- * Falls back to the most-recently-started pending session when sessionId is unknown
- * (new sessions whose real session_id hasn't been delivered yet).
- * @param {string} sessionId - Session identifier (may be empty for in-flight new sessions)
- * @returns {boolean} True if session was aborted, false if not found
- */
+// Falls back to the most-recently-started pending key when the real session_id hasn't arrived yet (in-flight new sessions).
 async function abortClaudeSDKSession(sessionId) {
   let session = getSession(sessionId);
   let resolvedKey = sessionId;
@@ -729,20 +626,11 @@ async function abortClaudeSDKSession(sessionId) {
   }
 }
 
-/**
- * Checks if an SDK session is currently active
- * @param {string} sessionId - Session identifier
- * @returns {boolean} True if session is active
- */
 function isClaudeSDKSessionActive(sessionId) {
   const session = getSession(sessionId);
   return session && session.status === 'active';
 }
 
-/**
- * Gets all active SDK session IDs
- * @returns {Array<string>} Array of active session IDs
- */
 function getActiveClaudeSDKSessions() {
   return getAllSessions();
 }

@@ -1,18 +1,3 @@
-/**
- * OpenAI Codex SDK Integration
- * =============================
- *
- * This module provides integration with the OpenAI Codex SDK for non-interactive
- * chat sessions. It mirrors the pattern used in claude-sdk.js for consistency.
- *
- * ## Usage
- *
- * - queryCodex(command, options, ws) - Execute a prompt with streaming via WebSocket
- * - abortCodexSession(sessionId) - Cancel an active session
- * - isCodexSessionActive(sessionId) - Check if a session is running
- * - getActiveCodexSessions() - List all active sessions
- */
-
 import { Codex } from '@openai/codex-sdk';
 import { notifyRunFailed, notifyRunStopped } from './services/notification-orchestrator.js';
 import { sessionsService } from './modules/providers/services/sessions.service.js';
@@ -51,11 +36,6 @@ function extractCodexTokenBudget(event) {
   };
 }
 
-/**
- * Transform Codex SDK event to WebSocket message format
- * @param {object} event - SDK event
- * @returns {object} - Transformed event for WebSocket
- */
 function transformCodexEvent(event) {
   // Map SDK event types to a consistent format
   switch (event.type) {
@@ -189,11 +169,6 @@ function transformCodexEvent(event) {
   }
 }
 
-/**
- * Map permission mode to Codex SDK options
- * @param {string} permissionMode - 'default', 'acceptEdits', or 'bypassPermissions'
- * @returns {object} - { sandboxMode, approvalPolicy }
- */
 function mapPermissionModeToCodexOptions(permissionMode) {
   switch (permissionMode) {
     case 'acceptEdits':
@@ -215,12 +190,6 @@ function mapPermissionModeToCodexOptions(permissionMode) {
   }
 }
 
-/**
- * Execute a Codex query with streaming
- * @param {string} command - The prompt to send
- * @param {object} options - Options including cwd, sessionId, model, permissionMode
- * @param {WebSocket|object} ws - WebSocket connection or response writer
- */
 export async function queryCodex(command, options = {}, ws) {
   const {
     sessionId,
@@ -408,11 +377,6 @@ export async function queryCodex(command, options = {}, ws) {
   }
 }
 
-/**
- * Abort an active Codex session
- * @param {string} sessionId - Session ID to abort
- * @returns {boolean} - Whether abort was successful
- */
 export function abortCodexSession(sessionId) {
   const session = activeCodexSessions.get(sessionId);
 
@@ -430,20 +394,11 @@ export function abortCodexSession(sessionId) {
   return true;
 }
 
-/**
- * Check if a session is active
- * @param {string} sessionId - Session ID to check
- * @returns {boolean} - Whether session is active
- */
 export function isCodexSessionActive(sessionId) {
   const session = activeCodexSessions.get(sessionId);
   return session?.status === 'running';
 }
 
-/**
- * Get all active sessions
- * @returns {Array} - Array of active session info
- */
 export function getActiveCodexSessions() {
   const sessions = [];
 
@@ -460,11 +415,6 @@ export function getActiveCodexSessions() {
   return sessions;
 }
 
-/**
- * Helper to send message via WebSocket or writer
- * @param {WebSocket|object} ws - WebSocket or response writer
- * @param {object} data - Data to send
- */
 function sendMessage(ws, data) {
   try {
     if (ws.isSSEStreamWriter || ws.isWebSocketWriter) {
