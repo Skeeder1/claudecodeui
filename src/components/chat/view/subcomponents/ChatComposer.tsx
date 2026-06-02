@@ -18,7 +18,7 @@ import CommandMenu from './CommandMenu';
 import ClaudeStatus from './ClaudeStatus';
 import ImageAttachment from './ImageAttachment';
 import ThinkingModeSelector from './ThinkingModeSelector';
-import TokenUsagePie from './TokenUsagePie';
+import TokenUsageSummary from './TokenUsageSummary';
 import {
   PromptInput,
   PromptInputHeader,
@@ -52,7 +52,7 @@ type ChatComposerProps = {
   provider: Provider | string;
   thinkingMode: string;
   setThinkingMode: Dispatch<SetStateAction<string>>;
-  tokenBudget: { used?: number; total?: number } | null;
+  tokenBudget: Record<string, unknown> | null;
   slashCommandsCount: number;
   onToggleCommandMenu: () => void;
   hasInput: boolean;
@@ -294,7 +294,7 @@ export default function ChatComposer({
               <ThinkingModeSelector selectedMode={thinkingMode} onModeChange={setThinkingMode} onClose={() => {}} className="" />
             )}
 
-            <TokenUsagePie used={tokenBudget?.used || 0} total={tokenBudget?.total || parseInt(import.meta.env.VITE_CONTEXT_WINDOW) || 160000} />
+            <TokenUsageSummary usage={tokenBudget} />
 
             <PromptInputButton
               tooltip={{ content: t('input.showAllCommands') }}

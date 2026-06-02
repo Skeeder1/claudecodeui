@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type RefObject, type Dispatc
 import { Check, ChevronDown } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 
-import { useServerPlatform } from "../../../../hooks/useServerPlatform";
 import type {
   ProjectSession,
   LLMProvider,
@@ -120,24 +119,15 @@ export default function ProviderSelectionEmptyState({
   setInput,
 }: ProviderSelectionEmptyStateProps) {
   const { t } = useTranslation("chat");
-  const { isWindowsServer } = useServerPlatform();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const visibleProviderGroups = useMemo(() => {
-    const groups: ProviderGroup[] = PROVIDER_META.map((p) => ({
+  const visibleProviderGroups = useMemo<ProviderGroup[]>(() => {
+    return PROVIDER_META.map((p) => ({
       id: p.id,
       name: p.name,
       models: providerModelCatalog[p.id]?.OPTIONS ?? [],
     }));
-    return isWindowsServer ? groups.filter((p) => p.id !== "cursor") : groups;
-  }, [isWindowsServer, providerModelCatalog]);
-
-  useEffect(() => {
-    if (isWindowsServer && provider === "cursor") {
-      setProvider("claude");
-      localStorage.setItem("selected-provider", "claude");
-    }
-  }, [isWindowsServer, provider, setProvider]);
+  }, [providerModelCatalog]);
 
   const nextTaskPrompt = t("tasks.nextTaskPrompt", {
     defaultValue: "Start the next task",

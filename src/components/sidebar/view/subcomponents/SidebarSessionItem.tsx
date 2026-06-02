@@ -2,7 +2,7 @@ import type { MouseEvent } from 'react';
 import { Check, Edit2, Star, Trash2, X } from 'lucide-react';
 import type { TFunction } from 'i18next';
 
-import { Badge, Button } from '../../../../shared/view/ui';
+import { Badge, Button, Tooltip } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
 import { formatCompactAge } from '../../../../lib/dateTime';
 import type { Project, ProjectSession, LLMProvider } from '../../../../types/app';
@@ -179,7 +179,12 @@ export default function SidebarSessionItem({
               <div className="flex items-center gap-2">
                 <div className="truncate text-xs font-medium text-foreground">{sessionView.sessionName}</div>
                 {compactSessionAge && (
-                  <span className="ml-auto flex-shrink-0 text-[11px] text-muted-foreground transition-opacity duration-200 group-hover:opacity-0">
+                  <span
+                    className={cn(
+                      'ml-auto flex-shrink-0 text-[11px] text-muted-foreground transition-opacity duration-200',
+                      isEditing ? 'opacity-0' : 'group-hover:opacity-0',
+                    )}
+                  >
                     {compactSessionAge}
                   </span>
                 )}
