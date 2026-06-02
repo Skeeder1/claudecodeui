@@ -1,4 +1,12 @@
-import * as React from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  type FC,
+  type ReactNode,
+  type HTMLAttributes,
+  type ButtonHTMLAttributes,
+} from 'react';
 
 import { cn } from '../../../lib/utils';
 import { Alert } from './Alert';
@@ -12,10 +20,10 @@ interface ConfirmationContextValue {
   approval: ApprovalState;
 }
 
-const ConfirmationContext = React.createContext<ConfirmationContextValue | null>(null);
+const ConfirmationContext = createContext<ConfirmationContextValue | null>(null);
 
 const useConfirmation = () => {
-  const context = React.useContext(ConfirmationContext);
+  const context = useContext(ConfirmationContext);
   if (!context) {
     throw new Error('Confirmation components must be used within Confirmation');
   }
@@ -24,17 +32,17 @@ const useConfirmation = () => {
 
 /* ─── Confirmation (root) ────────────────────────────────────────── */
 
-export interface ConfirmationProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ConfirmationProps extends HTMLAttributes<HTMLDivElement> {
   approval?: ApprovalState;
 }
 
-export const Confirmation: React.FC<ConfirmationProps> = ({
+export const Confirmation: FC<ConfirmationProps> = ({
   className,
   approval = 'pending',
   children,
   ...props
 }) => {
-  const contextValue = React.useMemo(() => ({ approval }), [approval]);
+  const contextValue = useMemo(() => ({ approval }), [approval]);
 
   return (
     <ConfirmationContext.Provider value={contextValue}>
@@ -48,9 +56,9 @@ Confirmation.displayName = 'Confirmation';
 
 /* ─── ConfirmationTitle ──────────────────────────────────────────── */
 
-export type ConfirmationTitleProps = React.HTMLAttributes<HTMLDivElement>;
+export type ConfirmationTitleProps = HTMLAttributes<HTMLDivElement>;
 
-export const ConfirmationTitle: React.FC<ConfirmationTitleProps> = ({
+export const ConfirmationTitle: FC<ConfirmationTitleProps> = ({
   className,
   ...props
 }) => (
@@ -65,10 +73,10 @@ ConfirmationTitle.displayName = 'ConfirmationTitle';
 /* ─── ConfirmationRequest — visible only when pending ────────────── */
 
 export interface ConfirmationRequestProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-export const ConfirmationRequest: React.FC<ConfirmationRequestProps> = ({ children }) => {
+export const ConfirmationRequest: FC<ConfirmationRequestProps> = ({ children }) => {
   const { approval } = useConfirmation();
   if (approval !== 'pending') return null;
   return <>{children}</>;
@@ -78,10 +86,10 @@ ConfirmationRequest.displayName = 'ConfirmationRequest';
 /* ─── ConfirmationAccepted — visible only when approved ──────────── */
 
 export interface ConfirmationAcceptedProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-export const ConfirmationAccepted: React.FC<ConfirmationAcceptedProps> = ({ children }) => {
+export const ConfirmationAccepted: FC<ConfirmationAcceptedProps> = ({ children }) => {
   const { approval } = useConfirmation();
   if (approval !== 'approved') return null;
   return <>{children}</>;
@@ -91,10 +99,10 @@ ConfirmationAccepted.displayName = 'ConfirmationAccepted';
 /* ─── ConfirmationRejected — visible only when rejected ──────────── */
 
 export interface ConfirmationRejectedProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
-export const ConfirmationRejected: React.FC<ConfirmationRejectedProps> = ({ children }) => {
+export const ConfirmationRejected: FC<ConfirmationRejectedProps> = ({ children }) => {
   const { approval } = useConfirmation();
   if (approval !== 'rejected') return null;
   return <>{children}</>;
@@ -103,9 +111,9 @@ ConfirmationRejected.displayName = 'ConfirmationRejected';
 
 /* ─── ConfirmationActions — visible only when pending ────────────── */
 
-export type ConfirmationActionsProps = React.HTMLAttributes<HTMLDivElement>;
+export type ConfirmationActionsProps = HTMLAttributes<HTMLDivElement>;
 
-export const ConfirmationActions: React.FC<ConfirmationActionsProps> = ({
+export const ConfirmationActions: FC<ConfirmationActionsProps> = ({
   className,
   ...props
 }) => {
@@ -124,11 +132,11 @@ ConfirmationActions.displayName = 'ConfirmationActions';
 
 /* ─── ConfirmationAction — styled button ─────────────────────────── */
 
-export type ConfirmationActionProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type ConfirmationActionProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'default' | 'outline' | 'ghost' | 'destructive';
 };
 
-export const ConfirmationAction: React.FC<ConfirmationActionProps> = ({
+export const ConfirmationAction: FC<ConfirmationActionProps> = ({
   variant = 'default',
   ...props
 }) => (

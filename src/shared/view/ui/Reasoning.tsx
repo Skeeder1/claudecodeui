@@ -1,6 +1,18 @@
 "use client";
 
-import * as React from 'react';
+import {
+  createContext,
+  useContext,
+  memo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  type HTMLAttributes,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { BrainIcon, ChevronDownIcon } from 'lucide-react';
 
 import { cn } from '../../../lib/utils';
@@ -16,10 +28,10 @@ interface ReasoningContextValue {
   duration: number | undefined;
 }
 
-const ReasoningContext = React.createContext<ReasoningContextValue | null>(null);
+const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 
 export const useReasoning = () => {
-  const context = React.useContext(ReasoningContext);
+  const context = useContext(ReasoningContext);
   if (!context) {
     throw new Error('Reasoning components must be used within Reasoning');
   }
@@ -31,7 +43,7 @@ export const useReasoning = () => {
 const AUTO_CLOSE_DELAY = 1000;
 const MS_IN_S = 1000;
 
-export interface ReasoningProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ReasoningProps extends HTMLAttributes<HTMLDivElement> {
   isStreaming?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
@@ -39,7 +51,7 @@ export interface ReasoningProps extends React.HTMLAttributes<HTMLDivElement> {
   duration?: number;
 }
 
-export const Reasoning = React.memo<ReasoningProps>(
+export const Reasoning = memo<ReasoningProps>(
   ({
     className,
     isStreaming = false,
@@ -53,11 +65,10 @@ export const Reasoning = React.memo<ReasoningProps>(
     const resolvedDefaultOpen = defaultOpen ?? isStreaming;
     const isExplicitlyClosed = defaultOpen === false;
 
-    // Controllable open state
-    const [internalOpen, setInternalOpen] = React.useState(resolvedDefaultOpen);
+    const [internalOpen, setInternalOpen] = useState(resolvedDefaultOpen);
     const isControlled = controlledOpen !== undefined;
     const isOpen = isControlled ? controlledOpen : internalOpen;
-    const setIsOpen = React.useCallback(
+    const setIsOpen = useCallback(
       (next: boolean) => {
         if (!isControlled) setInternalOpen(next);
         onOpenChange?.(next);
@@ -65,19 +76,16 @@ export const Reasoning = React.memo<ReasoningProps>(
       [isControlled, onOpenChange]
     );
 
-    // Duration tracking
-    const [duration, setDuration] = React.useState<number | undefined>(durationProp);
-    const hasEverStreamedRef = React.useRef(isStreaming);
-    const [hasAutoClosed, setHasAutoClosed] = React.useState(false);
-    const startTimeRef = React.useRef<number | null>(null);
+    const [duration, setDuration] = useState<number | undefined>(durationProp);
+    const hasEverStreamedRef = useRef(isStreaming);
+    const [hasAutoClosed, setHasAutoClosed] = useState(false);
+    const startTimeRef = useRef<number | null>(null);
 
-    // Sync external duration prop
-    React.useEffect(() => {
+    useEffect(() => {
       if (durationProp !== undefined) setDuration(durationProp);
     }, [durationProp]);
 
-    // Track streaming start/end for duration
-    React.useEffect(() => {
+    useEffect(() => {
       if (isStreaming) {
         hasEverStreamedRef.current = true;
         if (startTimeRef.current === null) {
@@ -89,15 +97,13 @@ export const Reasoning = React.memo<ReasoningProps>(
       }
     }, [isStreaming]);
 
-    // Auto-open when streaming starts
-    React.useEffect(() => {
+    useEffect(() => {
       if (isStreaming && !isOpen && !isExplicitlyClosed) {
         setIsOpen(true);
       }
     }, [isStreaming, isOpen, setIsOpen, isExplicitlyClosed]);
 
-    // Auto-close after streaming ends
-    React.useEffect(() => {
+    useEffect(() => {
       if (hasEverStreamedRef.current && !isStreaming && isOpen && !hasAutoClosed) {
         const timer = setTimeout(() => {
           setIsOpen(false);
@@ -107,7 +113,7 @@ export const Reasoning = React.memo<ReasoningProps>(
       }
     }, [isStreaming, isOpen, setIsOpen, hasAutoClosed]);
 
-    const contextValue = React.useMemo(
+    const contextValue = useMemo(
       () => ({ duration, isOpen, isStreaming, setIsOpen }),
       [duration, isOpen, isStreaming, setIsOpen]
     );
@@ -130,11 +136,11 @@ Reasoning.displayName = 'Reasoning';
 
 /* ─── ReasoningTrigger ───────────────────────────────────────────── */
 
-export interface ReasoningTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  getThinkingMessage?: (isStreaming: boolean, duration?: number) => React.ReactNode;
+export interface ReasoningTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 }
 
-const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number): React.ReactNode => {
+const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number): ReactNode => {
   if (isStreaming || duration === 0) {
     return <Shimmer>Thinking...</Shimmer>;
   }
@@ -144,7 +150,7 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number): Rea
   return <p>Thought for {duration} seconds</p>;
 };
 
-export const ReasoningTrigger = React.memo<ReasoningTriggerProps>(
+export const ReasoningTrigger = memo<ReasoningTriggerProps>(
   ({
     className,
     children,
@@ -181,11 +187,11 @@ ReasoningTrigger.displayName = 'ReasoningTrigger';
 
 /* ─── ReasoningContent ───────────────────────────────────────────── */
 
-export interface ReasoningContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
+export interface ReasoningContentProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
 }
 
-export const ReasoningContent = React.memo<ReasoningContentProps>(
+export const ReasoningContent = memo<ReasoningContentProps>(
   ({ className, children, ...props }) => (
     <CollapsibleContent
       className={cn('mt-4 text-sm text-muted-foreground', className)}
