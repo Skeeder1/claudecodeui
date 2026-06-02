@@ -104,10 +104,10 @@ const DialogTrigger = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
 );
 DialogTrigger.displayName = 'DialogTrigger';
 
-interface DialogContentProps extends HTMLAttributes<HTMLDivElement> {
+type DialogContentProps = HTMLAttributes<HTMLDivElement> & {
   onEscapeKeyDown?: () => void;
   onPointerDownOutside?: () => void;
-}
+};
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 

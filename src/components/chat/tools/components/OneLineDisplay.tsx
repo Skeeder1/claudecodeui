@@ -28,10 +28,6 @@ type OneLineDisplayProps = {
   status?: ToolStatus;
 }
 
-/**
- * Unified one-line display for simple tool inputs and results
- * Used by: Bash, Read, Grep/Glob (minimized), TodoRead, etc.
- */
 export const OneLineDisplay: FC<OneLineDisplayProps> = ({
   toolName,
   icon,

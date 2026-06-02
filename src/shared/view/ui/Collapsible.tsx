@@ -25,11 +25,11 @@ function useCollapsible() {
   return ctx;
 }
 
-interface CollapsibleProps extends HTMLAttributes<HTMLDivElement> {
+type CollapsibleProps = HTMLAttributes<HTMLDivElement> & {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-}
+};
 
 const Collapsible = forwardRef<HTMLDivElement, CollapsibleProps>(
   ({ defaultOpen = false, open: controlledOpen, onOpenChange: controlledOnOpenChange, className, children, ...props }, ref) => {

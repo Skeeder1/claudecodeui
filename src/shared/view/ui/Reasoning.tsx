@@ -43,13 +43,13 @@ export const useReasoning = () => {
 const AUTO_CLOSE_DELAY = 1000;
 const MS_IN_S = 1000;
 
-export interface ReasoningProps extends HTMLAttributes<HTMLDivElement> {
+export type ReasoningProps = HTMLAttributes<HTMLDivElement> & {
   isStreaming?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   duration?: number;
-}
+};
 
 export const Reasoning = memo<ReasoningProps>(
   ({
@@ -136,9 +136,9 @@ Reasoning.displayName = 'Reasoning';
 
 /* ─── ReasoningTrigger ───────────────────────────────────────────── */
 
-export interface ReasoningTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export type ReasoningTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
-}
+};
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number): ReactNode => {
   if (isStreaming || duration === 0) {
@@ -187,9 +187,9 @@ ReasoningTrigger.displayName = 'ReasoningTrigger';
 
 /* ─── ReasoningContent ───────────────────────────────────────────── */
 
-export interface ReasoningContentProps extends HTMLAttributes<HTMLDivElement> {
+export type ReasoningContentProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
-}
+};
 
 export const ReasoningContent = memo<ReasoningContentProps>(
   ({ className, children, ...props }) => (

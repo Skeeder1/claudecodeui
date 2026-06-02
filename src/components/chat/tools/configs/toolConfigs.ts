@@ -1,8 +1,3 @@
-/**
- * Centralized tool configuration registry
- * Defines display behavior for all tool types 
- */
-
 export type ToolInputData = Record<string, unknown>;
 export type ToolResultData = Record<string, unknown>;
 export type ContentProps = Record<string, unknown>;
@@ -556,9 +551,6 @@ export const TOOL_CONFIGS: Record<string, ToolDisplayConfig> = {
   }
 };
 
-/**
- * Get configuration for a tool, with fallback to default
- */
 export function getToolConfig(toolName: string): ToolDisplayConfig {
   return TOOL_CONFIGS[toolName] || TOOL_CONFIGS.Default;
 }

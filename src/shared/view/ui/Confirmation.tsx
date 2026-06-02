@@ -32,9 +32,9 @@ const useConfirmation = () => {
 
 /* ─── Confirmation (root) ────────────────────────────────────────── */
 
-export interface ConfirmationProps extends HTMLAttributes<HTMLDivElement> {
+export type ConfirmationProps = HTMLAttributes<HTMLDivElement> & {
   approval?: ApprovalState;
-}
+};
 
 export const Confirmation: FC<ConfirmationProps> = ({
   className,

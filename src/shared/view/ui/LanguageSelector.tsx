@@ -1,5 +1,3 @@
-
-
 import { useTranslation } from 'react-i18next';
 import { Languages } from 'lucide-react';
 
@@ -9,15 +7,6 @@ type LanguageSelectorProps = {
   compact?: boolean;
 };
 
-/**
- * Language Selector Component
- *
- * A dropdown component for selecting the application language.
- * Automatically updates the i18n language and persists to localStorage.
- *
- * Props:
- * @param {boolean} compact - If true, uses compact style (default: false)
- */
 export default function LanguageSelector({ compact = false }: LanguageSelectorProps) {
   const { i18n, t } = useTranslation('settings');
 

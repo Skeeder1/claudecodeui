@@ -36,9 +36,9 @@ Queue.displayName = 'Queue';
 
 /* ─── QueueItem ──────────────────────────────────────────────────── */
 
-export interface QueueItemProps extends HTMLAttributes<HTMLDivElement> {
+export type QueueItemProps = HTMLAttributes<HTMLDivElement> & {
   status?: QueueItemStatus;
-}
+};
 
 export const QueueItem = forwardRef<HTMLDivElement, QueueItemProps>(
   ({ status = 'pending', className, children, ...props }, ref) => {

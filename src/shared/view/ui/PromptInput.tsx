@@ -37,9 +37,9 @@ const usePromptInput = () => {
 
 /* ─── PromptInput (root form) ────────────────────────────────────── */
 
-export interface PromptInputProps extends FormHTMLAttributes<HTMLFormElement> {
+export type PromptInputProps = FormHTMLAttributes<HTMLFormElement> & {
   status?: PromptInputStatus;
-}
+};
 
 export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
   ({ className, status = 'ready', children, ...props }, ref) => {
@@ -146,9 +146,9 @@ export type PromptInputButtonTooltip = {
   side?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export interface PromptInputButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export type PromptInputButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tooltip?: PromptInputButtonTooltip;
-}
+};
 
 export const PromptInputButton = forwardRef<HTMLButtonElement, PromptInputButtonProps>(
   ({ className, tooltip, children, ...props }, ref) => {
@@ -192,9 +192,9 @@ PromptInputButton.displayName = 'PromptInputButton';
 
 /* ─── PromptInputSubmit ──────────────────────────────────────────── */
 
-export interface PromptInputSubmitProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export type PromptInputSubmitProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   status?: PromptInputStatus;
-}
+};
 
 export const PromptInputSubmit = forwardRef<HTMLButtonElement, PromptInputSubmitProps>(
   ({ className, status: statusProp, children, ...props }, ref) => {
