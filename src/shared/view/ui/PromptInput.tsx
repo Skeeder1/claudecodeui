@@ -21,7 +21,7 @@ import Tooltip from './Tooltip';
 
 type PromptInputStatus = 'ready' | 'submitted' | 'streaming' | 'error';
 
-interface PromptInputContextValue {
+type PromptInputContextValue = {
   status: PromptInputStatus;
 }
 
@@ -140,7 +140,7 @@ PromptInputTools.displayName = 'PromptInputTools';
 
 /* ─── PromptInputButton ──────────────────────────────────────────── */
 
-export interface PromptInputButtonTooltip {
+export type PromptInputButtonTooltip = {
   content: ReactNode;
   shortcut?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';

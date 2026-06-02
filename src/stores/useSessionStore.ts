@@ -28,7 +28,7 @@ export type MessageKind =
   | 'interactive_prompt'
   | 'task_notification';
 
-export interface NormalizedMessage {
+export type NormalizedMessage = {
   id: string;
   sessionId: string;
   timestamp: string;
@@ -82,7 +82,7 @@ export interface NormalizedMessage {
 
 export type SessionStatus = 'idle' | 'loading' | 'streaming' | 'error';
 
-export interface SessionSlot {
+export type SessionSlot = {
   serverMessages: NormalizedMessage[];
   realtimeMessages: NormalizedMessage[];
   merged: NormalizedMessage[];

@@ -16,7 +16,7 @@ import { Button } from './Button';
 
 type ApprovalState = 'pending' | 'approved' | 'rejected' | undefined;
 
-interface ConfirmationContextValue {
+type ConfirmationContextValue = {
   approval: ApprovalState;
 }
 
@@ -72,7 +72,7 @@ ConfirmationTitle.displayName = 'ConfirmationTitle';
 
 /* ─── ConfirmationRequest — visible only when pending ────────────── */
 
-export interface ConfirmationRequestProps {
+export type ConfirmationRequestProps = {
   children?: ReactNode;
 }
 
@@ -85,7 +85,7 @@ ConfirmationRequest.displayName = 'ConfirmationRequest';
 
 /* ─── ConfirmationAccepted — visible only when approved ──────────── */
 
-export interface ConfirmationAcceptedProps {
+export type ConfirmationAcceptedProps = {
   children?: ReactNode;
 }
 
@@ -98,7 +98,7 @@ ConfirmationAccepted.displayName = 'ConfirmationAccepted';
 
 /* ─── ConfirmationRejected — visible only when rejected ──────────── */
 
-export interface ConfirmationRejectedProps {
+export type ConfirmationRejectedProps = {
   children?: ReactNode;
 }
 

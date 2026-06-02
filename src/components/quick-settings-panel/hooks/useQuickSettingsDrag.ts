@@ -57,7 +57,7 @@ const getClientY = (event: EventWithClientY): number | null => {
 };
 
 export function useQuickSettingsDrag({ isMobile }: UseQuickSettingsDragProps) {
-  const [handlePosition, setHandlePosition] = useState<number>(readHandlePosition);
+  const [handlePosition, setHandlePosition] = useState(readHandlePosition);
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 

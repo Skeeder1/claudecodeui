@@ -30,12 +30,12 @@ import {
   PromptInputSubmit,
 } from '../../../../shared/view/ui';
 
-interface MentionableFile {
+type MentionableFile = {
   name: string;
   path: string;
 }
 
-interface SlashCommand {
+type SlashCommand = {
   name: string;
   description?: string;
   namespace?: string;

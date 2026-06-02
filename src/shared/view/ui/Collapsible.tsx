@@ -12,7 +12,7 @@ import {
 
 import { cn } from '../../../lib/utils';
 
-interface CollapsibleContextValue {
+type CollapsibleContextValue = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }

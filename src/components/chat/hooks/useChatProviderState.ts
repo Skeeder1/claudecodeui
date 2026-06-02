@@ -16,7 +16,7 @@ const FALLBACK_DEFAULT_MODEL: Record<LLMProvider, string> = {
 };
 
 
-interface UseChatProviderStateArgs {
+type UseChatProviderStateArgs = {
   selectedSession: ProjectSession | null;
 }
 
@@ -43,19 +43,19 @@ export function useChatProviderState({ selectedSession }: UseChatProviderStateAr
   const [provider, setProvider] = useState<LLMProvider>(() => {
     return (localStorage.getItem('selected-provider') as LLMProvider) || 'claude';
   });
-  const [cursorModel, setCursorModel] = useState<string>(() => {
+  const [cursorModel, setCursorModel] = useState(() => {
     return localStorage.getItem('cursor-model') || FALLBACK_DEFAULT_MODEL.cursor;
   });
-  const [claudeModel, setClaudeModel] = useState<string>(() => {
+  const [claudeModel, setClaudeModel] = useState(() => {
     return localStorage.getItem('claude-model') || FALLBACK_DEFAULT_MODEL.claude;
   });
-  const [codexModel, setCodexModel] = useState<string>(() => {
+  const [codexModel, setCodexModel] = useState(() => {
     return localStorage.getItem('codex-model') || FALLBACK_DEFAULT_MODEL.codex;
   });
-  const [geminiModel, setGeminiModel] = useState<string>(() => {
+  const [geminiModel, setGeminiModel] = useState(() => {
     return localStorage.getItem('gemini-model') || FALLBACK_DEFAULT_MODEL.gemini;
   });
-  const [opencodeModel, setOpenCodeModel] = useState<string>(() => {
+  const [opencodeModel, setOpenCodeModel] = useState(() => {
     return localStorage.getItem('opencode-model') || FALLBACK_DEFAULT_MODEL.opencode;
   });
 

@@ -21,7 +21,7 @@ import { Shimmer } from './Shimmer';
 
 /* ─── Context ────────────────────────────────────────────────────── */
 
-interface ReasoningContextValue {
+type ReasoningContextValue = {
   isStreaming: boolean;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;

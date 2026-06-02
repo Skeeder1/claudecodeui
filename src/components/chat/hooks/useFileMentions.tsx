@@ -4,20 +4,20 @@ import { api } from '../../../utils/api';
 import { escapeRegExp } from '../utils/chatFormatting';
 import type { Project } from '../../../types/app';
 
-interface ProjectFileNode {
+type ProjectFileNode = {
   name: string;
   type: 'file' | 'directory';
   path?: string;
   children?: ProjectFileNode[];
 }
 
-export interface MentionableFile {
+export type MentionableFile = {
   name: string;
   path: string;
   relativePath?: string;
 }
 
-interface UseFileMentionsOptions {
+type UseFileMentionsOptions = {
   selectedProject: Project | null;
   input: string;
   setInput: Dispatch<SetStateAction<string>>;

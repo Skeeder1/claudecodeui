@@ -2,12 +2,12 @@ import type { Project, ProjectSession, LLMProvider } from '../../../types/app';
 
 export type Provider = LLMProvider;
 
-export interface ChatImage {
+export type ChatImage = {
   data: string;
   name: string;
 }
 
-export interface ToolResult {
+export type ToolResult = {
   content?: unknown;
   isError?: boolean;
   timestamp?: string | number | Date;
@@ -15,7 +15,7 @@ export interface ToolResult {
   [key: string]: unknown;
 }
 
-export interface SubagentChildTool {
+export type SubagentChildTool = {
   toolId: string;
   toolName: string;
   toolInput: unknown;
@@ -23,7 +23,7 @@ export interface SubagentChildTool {
   timestamp: Date;
 }
 
-export interface ChatMessage {
+export type ChatMessage = {
   type: string;
   content?: string;
   displayText?: string;
@@ -54,12 +54,12 @@ export interface ChatMessage {
   [key: string]: unknown;
 }
 
-export interface QuestionOption {
+export type QuestionOption = {
   label: string;
   description?: string;
 }
 
-export interface Question {
+export type Question = {
   question: string;
   header?: string;
   options: QuestionOption[];
@@ -70,7 +70,7 @@ export type SessionNavigationOptions = {
   replace?: boolean;
 };
 
-export interface ChatInterfaceProps {
+export type ChatInterfaceProps = {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
   ws: WebSocket | null;

@@ -9,7 +9,7 @@ export type SessionResult = {
   provider?: LLMProvider;
 };
 
-interface SessionsResponse {
+type SessionsResponse = {
   sessions?: ProjectSession[];
   cursorSessions?: ProjectSession[];
   codexSessions?: ProjectSession[];

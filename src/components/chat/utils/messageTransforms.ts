@@ -1,4 +1,4 @@
-export interface DiffLine {
+export type DiffLine = {
   type: 'added' | 'removed';
   content: string;
   lineNum: number;

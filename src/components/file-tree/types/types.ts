@@ -4,7 +4,7 @@ export type FileTreeViewMode = 'simple' | 'compact' | 'detailed';
 
 export type FileTreeItemType = 'file' | 'directory';
 
-export interface FileTreeNode {
+export type FileTreeNode = {
   name: string;
   type: FileTreeItemType;
   path: string;
@@ -15,7 +15,7 @@ export interface FileTreeNode {
   [key: string]: unknown;
 }
 
-export interface FileTreeImageSelection {
+export type FileTreeImageSelection = {
   name: string;
   path: string;
   projectPath?: string;
@@ -23,7 +23,7 @@ export interface FileTreeImageSelection {
   projectId: string;
 }
 
-export interface FileIconData {
+export type FileIconData = {
   icon: LucideIcon;
   color: string;
 }

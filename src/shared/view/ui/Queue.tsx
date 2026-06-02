@@ -7,7 +7,7 @@ export type QueueItemStatus = 'completed' | 'in_progress' | 'pending';
 
 /* ─── Context ────────────────────────────────────────────────────── */
 
-interface QueueItemContextValue {
+type QueueItemContextValue = {
   status: QueueItemStatus;
 }
 

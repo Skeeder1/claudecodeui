@@ -19,7 +19,7 @@ export type ProviderModelsCacheInfo = {
 
 export type AppTab = 'chat' | 'files' | 'shell' | 'git' | 'tasks' | 'preview' | `plugin:${string}`;
 
-export interface ProjectSession {
+export type ProjectSession = {
   id: string;
   title?: string;
   summary?: string;
@@ -36,13 +36,13 @@ export interface ProjectSession {
   [key: string]: unknown;
 }
 
-export interface ProjectSessionMeta {
+export type ProjectSessionMeta = {
   total?: number;
   hasMore?: boolean;
   [key: string]: unknown;
 }
 
-export interface ProjectTaskmasterInfo {
+export type ProjectTaskmasterInfo = {
   hasTaskmaster?: boolean;
   status?: string;
   metadata?: Record<string, unknown>;
@@ -53,7 +53,7 @@ export interface ProjectTaskmasterInfo {
 // folder-derived `name` string. Projects are now addressed everywhere by the
 // DB-assigned `projectId` (primary key in the `projects` table), and the UI
 // uses the same identifier for routing, state keys and API calls.
-export interface Project {
+export type Project = {
   projectId: string;
   displayName: string;
   fullPath: string;
@@ -69,16 +69,16 @@ export interface Project {
   [key: string]: unknown;
 }
 
-export interface LoadingProgress {
+export type LoadingProgress = {
   type?: 'loading_progress';
   phase?: string;
   current: number;
   total: number;
   currentProject?: string;
   [key: string]: unknown;
-}
+};
 
-export interface ProjectsUpdatedMessage {
+export type ProjectsUpdatedMessage = {
   type: 'projects_updated';
   projects: Project[];
   updatedSessionId?: string;
@@ -91,9 +91,9 @@ export interface ProjectsUpdatedMessage {
   [key: string]: unknown;
 }
 
-export interface LoadingProgressMessage extends LoadingProgress {
+export type LoadingProgressMessage = LoadingProgress & {
   type: 'loading_progress';
-}
+};
 
 export type AppSocketMessage =
   | LoadingProgressMessage

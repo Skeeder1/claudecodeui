@@ -9,7 +9,7 @@ export type CommitResult = {
   author: string;
 };
 
-interface CommitsResponse {
+type CommitsResponse = {
   commits?: Array<{ hash: string; message: string; author: string }>;
   error?: string;
 }

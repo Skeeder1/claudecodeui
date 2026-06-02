@@ -32,7 +32,7 @@ export const useTasksSettings = () => {
 };
 
 export const TasksSettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [tasksEnabled, setTasksEnabled] = useState<boolean>(() => {
+  const [tasksEnabled, setTasksEnabled] = useState(() => {
     const saved = localStorage.getItem('tasks-enabled');
     return saved !== null ? JSON.parse(saved) : true;
   });

@@ -1,6 +1,6 @@
 import { type FC } from 'react';
 
-interface TaskItem {
+type TaskItem = {
   id: string;
   subject: string;
   status: 'pending' | 'in_progress' | 'completed';

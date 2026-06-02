@@ -20,7 +20,7 @@ import { createPortal } from 'react-dom';
 
 import { cn } from '../../../lib/utils';
 
-interface DialogContextValue {
+type DialogContextValue = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerRef: MutableRefObject<HTMLElement | null>;
@@ -34,7 +34,7 @@ function useDialog() {
   return ctx;
 }
 
-interface DialogProps {
+type DialogProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;

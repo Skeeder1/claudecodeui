@@ -8,7 +8,7 @@ import type { LLMProvider, Project } from '../../../types/app';
 
 const COMMAND_QUERY_DEBOUNCE_MS = 150;
 
-export interface SlashCommand {
+export type SlashCommand = {
   name: string;
   description?: string;
   namespace?: string;
@@ -18,7 +18,7 @@ export interface SlashCommand {
   [key: string]: unknown;
 }
 
-interface UseSlashCommandsOptions {
+type UseSlashCommandsOptions = {
   selectedProject: Project | null;
   provider: LLMProvider;
   input: string;

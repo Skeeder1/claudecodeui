@@ -2,7 +2,7 @@ import { memo, type ElementType } from 'react';
 
 import { cn } from '../../../lib/utils';
 
-interface ShimmerProps {
+type ShimmerProps = {
   children: string;
   className?: string;
   as?: ElementType;

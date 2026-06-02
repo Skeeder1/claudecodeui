@@ -7,7 +7,7 @@ export type ToolInputData = Record<string, unknown>;
 export type ToolResultData = Record<string, unknown>;
 export type ContentProps = Record<string, unknown>;
 
-export interface ToolDisplayConfig {
+export type ToolDisplayConfig = {
   input: {
     type: 'one-line' | 'collapsible' | 'plan' | 'hidden';
     // One-line config

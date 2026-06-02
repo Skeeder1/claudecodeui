@@ -4,7 +4,7 @@ import { useApiSource } from './useApiSource';
 
 export type BranchResult = { name: string };
 
-interface BranchesResponse {
+type BranchesResponse = {
   localBranches?: string[];
 }
 

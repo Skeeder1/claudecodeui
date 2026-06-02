@@ -16,7 +16,7 @@ type PendingViewSession = {
   startedAt: number;
 };
 
-interface UseChatSessionStateArgs {
+type UseChatSessionStateArgs = {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
   ws: WebSocket | null;
@@ -30,7 +30,7 @@ interface UseChatSessionStateArgs {
   sessionStore: SessionStore;
 }
 
-interface ScrollRestoreState {
+type ScrollRestoreState = {
   height: number;
   top: number;
 }

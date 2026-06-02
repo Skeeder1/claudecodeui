@@ -24,7 +24,7 @@ type PendingViewSession = {
   startedAt: number;
 };
 
-interface UseChatComposerStateArgs {
+type UseChatComposerStateArgs = {
   selectedProject: Project | null;
   selectedSession: ProjectSession | null;
   currentSessionId: string | null;
@@ -53,12 +53,12 @@ interface UseChatComposerStateArgs {
   setIsUserScrolledUp: (isScrolledUp: boolean) => void;
 }
 
-interface MentionableFile {
+type MentionableFile = {
   name: string;
   path: string;
 }
 
-interface CommandExecutionResult {
+type CommandExecutionResult = {
   type: 'builtin' | 'custom';
   action?: string;
   data?: unknown;

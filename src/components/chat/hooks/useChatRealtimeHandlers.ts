@@ -46,7 +46,7 @@ type LatestChatMessage = {
   aborted?: boolean;
 };
 
-interface UseChatRealtimeHandlersArgs {
+type UseChatRealtimeHandlersArgs = {
   latestMessage: LatestChatMessage | null;
   provider: LLMProvider;
   selectedSession: ProjectSession | null;

@@ -1,6 +1,6 @@
 import { type FC } from 'react';
 
-interface FileListItem {
+type FileListItem = {
   path: string;
   onClick?: () => void;
 }

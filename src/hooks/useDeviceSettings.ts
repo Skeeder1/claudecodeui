@@ -35,10 +35,10 @@ export function useDeviceSettings(options: UseDeviceSettingsOptions = {}) {
     trackPWA = true
   } = options;
 
-  const [isMobile, setIsMobile] = useState<boolean>(() => (
+  const [isMobile, setIsMobile] = useState(() => (
     trackMobile ? getIsMobile(mobileBreakpoint) : false
   ));
-  const [isPWA, setIsPWA] = useState<boolean>(() => (
+  const [isPWA, setIsPWA] = useState(() => (
     trackPWA ? getIsPWA() : false
   ));
 

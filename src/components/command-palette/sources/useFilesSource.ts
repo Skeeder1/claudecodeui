@@ -7,7 +7,7 @@ export type FileResult = {
   name: string;
 };
 
-interface FileNode {
+type FileNode = {
   type: 'file' | 'directory';
   name: string;
   path: string;
