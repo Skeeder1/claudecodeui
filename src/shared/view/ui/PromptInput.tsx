@@ -1,6 +1,16 @@
 "use client";
 
-import * as React from 'react';
+import {
+  createContext,
+  useContext,
+  forwardRef,
+  useMemo,
+  type FormHTMLAttributes,
+  type HTMLAttributes,
+  type TextareaHTMLAttributes,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { SendHorizonalIcon, SquareIcon } from 'lucide-react';
 
 import { cn } from '../../../lib/utils';
@@ -15,10 +25,10 @@ interface PromptInputContextValue {
   status: PromptInputStatus;
 }
 
-const PromptInputContext = React.createContext<PromptInputContextValue | null>(null);
+const PromptInputContext = createContext<PromptInputContextValue | null>(null);
 
 const usePromptInput = () => {
-  const context = React.useContext(PromptInputContext);
+  const context = useContext(PromptInputContext);
   if (!context) {
     throw new Error('PromptInput components must be used within PromptInput');
   }
@@ -27,13 +37,13 @@ const usePromptInput = () => {
 
 /* ─── PromptInput (root form) ────────────────────────────────────── */
 
-export interface PromptInputProps extends React.FormHTMLAttributes<HTMLFormElement> {
+export interface PromptInputProps extends FormHTMLAttributes<HTMLFormElement> {
   status?: PromptInputStatus;
 }
 
-export const PromptInput = React.forwardRef<HTMLFormElement, PromptInputProps>(
+export const PromptInput = forwardRef<HTMLFormElement, PromptInputProps>(
   ({ className, status = 'ready', children, ...props }, ref) => {
-    const contextValue = React.useMemo(() => ({ status }), [status]);
+    const contextValue = useMemo(() => ({ status }), [status]);
 
     return (
       <PromptInputContext.Provider value={contextValue}>
@@ -56,39 +66,37 @@ PromptInput.displayName = 'PromptInput';
 
 /* ─── PromptInputHeader ──────────────────────────────────────────── */
 
-export const PromptInputHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    data-slot="prompt-input-header"
-    className={cn('px-3 pt-3', className)}
-    {...props}
-  />
-));
+export const PromptInputHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="prompt-input-header"
+      className={cn('px-3 pt-3', className)}
+      {...props}
+    />
+  )
+);
 PromptInputHeader.displayName = 'PromptInputHeader';
 
 /* ─── PromptInputBody ────────────────────────────────────────────── */
 
-export const PromptInputBody = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    data-slot="prompt-input-body"
-    className={cn('relative', className)}
-    {...props}
-  />
-));
+export const PromptInputBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="prompt-input-body"
+      className={cn('relative', className)}
+      {...props}
+    />
+  )
+);
 PromptInputBody.displayName = 'PromptInputBody';
 
 /* ─── PromptInputTextarea ────────────────────────────────────────── */
 
-export const PromptInputTextarea = React.forwardRef<
+export const PromptInputTextarea = forwardRef<
   HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement>
+  TextareaHTMLAttributes<HTMLTextAreaElement>
 >(({ className, ...props }, ref) => (
   <textarea
     ref={ref}
@@ -104,47 +112,45 @@ PromptInputTextarea.displayName = 'PromptInputTextarea';
 
 /* ─── PromptInputFooter ──────────────────────────────────────────── */
 
-export const PromptInputFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    data-slot="prompt-input-footer"
-    className={cn('flex items-center justify-between border-t border-border/30 px-3 py-2', className)}
-    {...props}
-  />
-));
+export const PromptInputFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="prompt-input-footer"
+      className={cn('flex items-center justify-between border-t border-border/30 px-3 py-2', className)}
+      {...props}
+    />
+  )
+);
 PromptInputFooter.displayName = 'PromptInputFooter';
 
 /* ─── PromptInputTools ───────────────────────────────────────────── */
 
-export const PromptInputTools = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    data-slot="prompt-input-tools"
-    className={cn('flex items-center gap-1', className)}
-    {...props}
-  />
-));
+export const PromptInputTools = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      data-slot="prompt-input-tools"
+      className={cn('flex items-center gap-1', className)}
+      {...props}
+    />
+  )
+);
 PromptInputTools.displayName = 'PromptInputTools';
 
 /* ─── PromptInputButton ──────────────────────────────────────────── */
 
 export interface PromptInputButtonTooltip {
-  content: React.ReactNode;
+  content: ReactNode;
   shortcut?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export interface PromptInputButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface PromptInputButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tooltip?: PromptInputButtonTooltip;
 }
 
-export const PromptInputButton = React.forwardRef<HTMLButtonElement, PromptInputButtonProps>(
+export const PromptInputButton = forwardRef<HTMLButtonElement, PromptInputButtonProps>(
   ({ className, tooltip, children, ...props }, ref) => {
     const button = (
       <Button
@@ -186,13 +192,13 @@ PromptInputButton.displayName = 'PromptInputButton';
 
 /* ─── PromptInputSubmit ──────────────────────────────────────────── */
 
-export interface PromptInputSubmitProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface PromptInputSubmitProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   status?: PromptInputStatus;
 }
 
-export const PromptInputSubmit = React.forwardRef<HTMLButtonElement, PromptInputSubmitProps>(
+export const PromptInputSubmit = forwardRef<HTMLButtonElement, PromptInputSubmitProps>(
   ({ className, status: statusProp, children, ...props }, ref) => {
-    const context = React.useContext(PromptInputContext);
+    const context = useContext(PromptInputContext);
     const status = statusProp ?? context?.status ?? 'ready';
     const isActive = status === 'submitted' || status === 'streaming';
 
