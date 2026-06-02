@@ -534,8 +534,7 @@ export function useChatComposerState({
         return;
       }
       isSubmittingRef.current = true;
-      // Ensure the guard is always released, even if an unhandled exception occurs below.
-      const releaseSubmitGuard = () => { isSubmittingRef.current = false; };
+      try {
 
       // Slash command dispatcher. Three routing rules:
       //   - 'skill' commands: NOT intercepted — sent as text to SDK (existing behavior)
@@ -575,7 +574,6 @@ export function useChatComposerState({
           if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
           }
-          releaseSubmitGuard();
           return;
         }
       }
@@ -614,7 +612,6 @@ export function useChatComposerState({
             content: `Failed to upload images: ${message}`,
             timestamp: new Date(),
           });
-          releaseSubmitGuard();
           return;
         }
       }
@@ -728,7 +725,6 @@ export function useChatComposerState({
         });
       }
 
-      releaseSubmitGuard();
       setInput('');
       inputValueRef.current = '';
       resetCommandMenuState();
@@ -742,6 +738,9 @@ export function useChatComposerState({
       }
 
       safeLocalStorage.removeItem(`draft_input_${selectedProject.projectId}`);
+      } finally {
+        isSubmittingRef.current = false;
+      }
     },
     [
       selectedSession,

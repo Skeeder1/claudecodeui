@@ -11,6 +11,11 @@ type ThinkingModeSelectorProps = {
   className?: string;
 };
 
+const MODE_KEY_MAP: Record<string, string> = {
+  'think-hard': 'thinkHard',
+  'think-harder': 'thinkHarder',
+};
+
 function ThinkingModeSelector({ selectedMode, onModeChange, onClose, className = '' }: ThinkingModeSelectorProps) {
   const { t } = useTranslation('chat');
   const [isOpen, setIsOpen] = useState(false);
@@ -18,15 +23,9 @@ function ThinkingModeSelector({ selectedMode, onModeChange, onClose, className =
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(null);
-
-  // Mapping from mode ID to translation key
-  const modeKeyMap: Record<string, string> = {
-    'think-hard': 'thinkHard',
-    'think-harder': 'thinkHarder'
-  };
   // Create translated modes for display
   const translatedModes = thinkingModes.map(mode => {
-    const modeKey = modeKeyMap[mode.id] || mode.id;
+    const modeKey = MODE_KEY_MAP[mode.id] || mode.id;
     return {
       ...mode,
       name: t(`thinkingMode.modes.${modeKey}.name`),
