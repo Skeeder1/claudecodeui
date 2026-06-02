@@ -1,20 +1,8 @@
-/**
- * Message normalization utilities.
- * Converts NormalizedMessage[] from the session store into ChatMessage[] for the UI.
- */
-
 import type { NormalizedMessage } from '../../../stores/useSessionStore';
 import type { ChatMessage, SubagentChildTool } from '../types/types';
 import { decodeHtmlEntities, unescapeWithMathProtection, formatUsageLimitText } from '../utils/chatFormatting';
 
-/**
- * Convert NormalizedMessage[] from the session store into ChatMessage[]
- * that the existing UI components expect.
- *
- * Truly internal/system content is already filtered server-side. Some Claude
- * transcript artifacts such as local slash commands and compact summaries are
- * intentionally preserved and annotated so they can render like normal chat.
- */
+// Slash-command/compact-summary transcript artifacts are intentionally preserved (server filters only truly internal content).
 export function normalizedToChatMessages(messages: NormalizedMessage[]): ChatMessage[] {
   const converted: ChatMessage[] = [];
 

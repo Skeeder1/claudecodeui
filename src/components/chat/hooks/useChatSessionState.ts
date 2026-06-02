@@ -133,14 +133,7 @@ export function useChatSessionState({
   const loadAllFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadAllOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLoadedSessionKeyRef = useRef<string | null>(null);
-  /**
-   * Tracks the last processed value from `useProjectsState.newSessionTrigger`.
-   *
-   * The trigger itself is intentionally increment-only and routed via:
-   * useProjectsState -> AppContent -> MainContent -> ChatInterface -> this hook.
-   * We compare values to ensure each explicit New Session click runs exactly one
-   * reset pass in this local chat state domain.
-   */
+  // Increment-only trigger; compare to ensure each New Session click runs exactly one local reset.
   const previousNewSessionTriggerRef = useRef(newSessionTrigger ?? 0);
 
   const createDiff = useMemo<DiffCalculator>(() => createCachedDiffCalculator(), []);
@@ -152,22 +145,7 @@ export function useChatSessionState({
     }
     previousNewSessionTriggerRef.current = trigger;
 
-    /**
-     * Consumer-side reset for explicit New Session intent.
-     *
-     * Why this is essential:
-     * - Chat keeps local state that is not fully derived from `selectedSession`:
-     *   `currentSessionId`, `pendingUserMessage`, streaming/status flags, message
-     *   pagination/scroll bookkeeping, and provider-specific sessionStorage keys.
-     * - If the user clicks New Session while already on the same route with no
-     *   selected session, parent state updates can be idempotent and this local
-     *   state would otherwise persist, making the click appear to "do nothing".
-     *
-     * What this reset guarantees:
-     * - A deterministic clean draft state on every New Session click.
-     * - No dependence on route/tab/session-object identity changes.
-     * - No coupling to unrelated external update signals.
-     */
+    // Parent updates can be idempotent when already on the same route; this local reset ensures New Session always feels responsive.
     resetStreamingState();
     pendingViewSessionRef.current = null;
     setClaudeStatus(null);

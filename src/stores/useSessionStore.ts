@@ -1,11 +1,4 @@
-/**
- * Session-keyed message store.
- *
- * Holds per-session state in a Map keyed by sessionId.
- * Session switch = change activeSessionId pointer. No clearing. Old data stays.
- * WebSocket handler = store.appendRealtime(msg.sessionId, msg). One line.
- * No localStorage for messages. Backend JSONL is the source of truth.
- */
+// Messages keyed by sessionId; session switch = pointer change, no clear; backend JSONL is source of truth.
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 
@@ -38,13 +31,7 @@ export type NormalizedMessage = {
   // kind-specific fields (flat for simplicity)
   role?: 'user' | 'assistant';
   content?: string;
-  /**
-   * Mirrors optional transcript metadata from the server.
-   *
-   * These fields are currently used by Claude history normalization so local
-   * slash commands, local stdout, and compact summaries do not disappear when
-   * the session store hydrates from REST history.
-   */
+  // Preserved by history normalization so slash commands and compact summaries survive REST hydration.
   displayText?: string;
   commandName?: string;
   commandMessage?: string;
@@ -115,24 +102,14 @@ function createEmptySlot(): SessionSlot {
   };
 }
 
-/**
- * Compute merged messages: server + realtime, deduped by id and adjacent
- * assistant echo (same trimmed text), so finalized stream rows do not stack
- * on top of the persisted copy before realtime is cleared.
- */
+// Merges server + realtime deduped by id and adjacent-echo text so streaming rows don't double-render before server catches up.
 function userTextFingerprint(m: NormalizedMessage): string | null {
   if (m.kind !== 'text' || m.role !== 'user') return null;
   const t = (m.content || '').trim();
   return t.length > 0 ? t : null;
 }
 
-/**
- * After `finalizeStreaming`, the client holds a synthetic assistant `text` row
- * while the sessions API soon returns the same reply with a different id.
- * Those sit back-to-back in merged order and look like duplicate bubbles until
- * `refreshFromServer` clears realtime. Collapse same-text assistant rows and
- * stream_placeholder → text when content matches.
- */
+// After finalizeStreaming, client holds a synthetic row that matches the soon-arriving server copy; collapse same-text adjacent assistant rows.
 function dedupeAdjacentAssistantEchoes(merged: NormalizedMessage[]): NormalizedMessage[] {
   const out: NormalizedMessage[] = [];
   for (const m of merged) {
@@ -238,10 +215,7 @@ function mergeMessagesById(
   return deduped;
 }
 
-/**
- * Recompute slot.merged only when the input arrays have actually changed
- * (by reference). Returns true if merged was recomputed.
- */
+// Reference-equality dirty check: skips recompute when neither server nor realtime arrays changed.
 function recomputeMergedIfNeeded(slot: SessionSlot): boolean {
   if (slot.serverMessages === slot._lastServerRef && slot.realtimeMessages === slot._lastRealtimeRef) {
     return false;
@@ -316,11 +290,6 @@ export function useSessionStore() {
     return storeRef.current.has(resolvedSessionId);
   }, [resolveSessionId]);
 
-  /**
-   * Fetch messages from the provider sessions endpoint and populate serverMessages.
-   *
-   * Provider and project metadata are resolved server-side from `sessionId`.
-   */
   const fetchFromServer = useCallback(async (
     sessionId: string,
     opts: {
@@ -375,9 +344,6 @@ export function useSessionStore() {
     }
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Load older (paginated) messages and prepend to serverMessages.
-   */
   const fetchMore = useCallback(async (
     sessionId: string,
     opts: {
@@ -418,10 +384,6 @@ export function useSessionStore() {
     }
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Append a realtime (WebSocket) message to the correct session slot.
-   * This works regardless of which session is actively viewed.
-   */
   const appendRealtime = useCallback((sessionId: string, msg: NormalizedMessage) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = getSlot(resolvedSessionId);
@@ -438,9 +400,6 @@ export function useSessionStore() {
     notify(resolvedSessionId);
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Append multiple realtime messages at once (batch).
-   */
   const appendRealtimeBatch = useCallback((sessionId: string, msgs: NormalizedMessage[]) => {
     if (msgs.length === 0) return;
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
@@ -459,9 +418,6 @@ export function useSessionStore() {
     notify(resolvedSessionId);
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Re-fetch serverMessages from the provider sessions endpoint.
-   */
   const refreshFromServer = useCallback(async (
     sessionId: string,
     _opts: {
@@ -495,9 +451,6 @@ export function useSessionStore() {
     }
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Update session status.
-   */
   const setStatus = useCallback((sessionId: string, status: SessionStatus) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = getSlot(resolvedSessionId);
@@ -505,9 +458,6 @@ export function useSessionStore() {
     notify(resolvedSessionId);
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Check if a session's data is stale (>30s old).
-   */
   const isStale = useCallback((sessionId: string) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = storeRef.current.get(resolvedSessionId);
@@ -515,10 +465,7 @@ export function useSessionStore() {
     return Date.now() - slot.fetchedAt > STALE_THRESHOLD_MS;
   }, [resolveSessionId]);
 
-  /**
-   * Update or create a streaming message (accumulated text so far).
-   * Uses a well-known ID so subsequent calls replace the same message.
-   */
+  // Uses well-known __streaming_<sessionId> as the msg id so repeated calls replace in-place.
   const updateStreaming = useCallback((sessionId: string, accumulatedText: string, msgProvider: LLMProvider) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = getSlot(resolvedSessionId);
@@ -542,10 +489,6 @@ export function useSessionStore() {
     notify(resolvedSessionId);
   }, [getSlot, notify, resolveSessionId]);
 
-  /**
-   * Finalize streaming: convert the streaming message to a regular text message.
-   * The well-known streaming ID is replaced with a unique text message ID.
-   */
   const finalizeStreaming = useCallback((sessionId: string) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = storeRef.current.get(resolvedSessionId);
@@ -566,9 +509,6 @@ export function useSessionStore() {
     }
   }, [notify, resolveSessionId]);
 
-  /**
-   * Clear realtime messages for a session (e.g., after stream completes and server fetch catches up).
-   */
   const clearRealtime = useCallback((sessionId: string) => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     const slot = storeRef.current.get(resolvedSessionId);
@@ -579,17 +519,11 @@ export function useSessionStore() {
     }
   }, [notify, resolveSessionId]);
 
-  /**
-   * Get merged messages for a session (for rendering).
-   */
   const getMessages = useCallback((sessionId: string): NormalizedMessage[] => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     return storeRef.current.get(resolvedSessionId)?.merged ?? [];
   }, [resolveSessionId]);
 
-  /**
-   * Get session slot (for status, pagination info, etc.).
-   */
   const getSessionSlot = useCallback((sessionId: string): SessionSlot | undefined => {
     const resolvedSessionId = resolveSessionId(sessionId) ?? sessionId;
     return storeRef.current.get(resolvedSessionId);
