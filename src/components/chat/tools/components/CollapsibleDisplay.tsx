@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, type ReactNode } from 'react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../../../../shared/view/ui';
 import { CollapsibleSection } from './CollapsibleSection';
 
@@ -7,10 +7,10 @@ interface CollapsibleDisplayProps {
   toolId?: string;
   title: string;
   defaultOpen?: boolean;
-  action?: React.ReactNode;
-  badge?: React.ReactNode;
+  action?: ReactNode;
+  badge?: ReactNode;
   onTitleClick?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   showRawParameters?: boolean;
   rawContent?: string;
   className?: string;
@@ -29,7 +29,7 @@ const borderColorMap: Record<string, string> = {
   default: 'border-l-border',
 };
 
-export const CollapsibleDisplay: React.FC<CollapsibleDisplayProps> = ({
+export const CollapsibleDisplay: FC<CollapsibleDisplayProps> = ({
   toolName,
   title,
   defaultOpen = false,

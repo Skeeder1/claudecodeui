@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import type { Question } from '../../../types/types';
 
 interface QuestionAnswerContentProps {
@@ -8,7 +8,7 @@ interface QuestionAnswerContentProps {
 }
 
 // Exception to the stateless ContentRenderer pattern: multi-question navigation requires local state.
-export const QuestionAnswerContent: React.FC<QuestionAnswerContentProps> = ({
+export const QuestionAnswerContent: FC<QuestionAnswerContentProps> = ({
   questions,
   answers,
   className = '',

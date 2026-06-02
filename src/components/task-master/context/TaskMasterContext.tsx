@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { api } from '../../../utils/api';
 import { useAuth } from '../../auth/context/AuthContext';
@@ -57,7 +57,7 @@ export function useTaskMaster() {
   return context;
 }
 
-export function TaskMasterProvider({ children }: { children: React.ReactNode }) {
+export function TaskMasterProvider({ children }: { children: ReactNode }) {
   const { latestMessage } = useWebSocket();
   const { user, token, isLoading: isAuthLoading } = useAuth();
 

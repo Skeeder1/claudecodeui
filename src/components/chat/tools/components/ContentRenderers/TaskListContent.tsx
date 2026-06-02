@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 
 interface TaskItem {
   id: string;
@@ -70,7 +70,7 @@ const statusConfig = {
  * Renders task list results with proper status icons and compact layout
  * Parses text content from TaskList/TaskGet results
  */
-export const TaskListContent: React.FC<TaskListContentProps> = ({ content }) => {
+export const TaskListContent: FC<TaskListContentProps> = ({ content }) => {
   const tasks = parseTaskContent(content);
 
   // If we couldn't parse any tasks, fall back to text display

@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 
 interface TextContentProps {
   content: string;
@@ -10,7 +10,7 @@ interface TextContentProps {
  * Renders plain text, JSON, or code content
  * Used by: Raw parameters, generic text results, JSON responses
  */
-export const TextContent: React.FC<TextContentProps> = ({
+export const TextContent: FC<TextContentProps> = ({
   content,
   format = 'plain',
   className = ''

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, type DragEvent } from 'react';
 import type { Project } from '../../../types/app';
 import { api } from '../../../utils/api';
 
@@ -67,18 +67,18 @@ export const useFileTreeUpload = ({
   const [operationLoading, setOperationLoading] = useState(false);
   const treeRef = useRef<HTMLDivElement>(null);
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
+  const handleDragEnter = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     // Only set isDragOver to false if we're leaving the entire tree
@@ -88,7 +88,7 @@ export const useFileTreeUpload = ({
     }
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
@@ -178,13 +178,13 @@ export const useFileTreeUpload = ({
     }
   }, [dropTarget, selectedProject, onRefresh, showToast]);
 
-  const handleItemDragOver = useCallback((e: React.DragEvent, itemPath: string) => {
+  const handleItemDragOver = useCallback((e: DragEvent, itemPath: string) => {
     e.preventDefault();
     e.stopPropagation();
     setDropTarget(itemPath);
   }, []);
 
-  const handleItemDrop = useCallback((e: React.DragEvent, itemPath: string) => {
+  const handleItemDrop = useCallback((e: DragEvent, itemPath: string) => {
     e.preventDefault();
     e.stopPropagation();
     setDropTarget(itemPath);

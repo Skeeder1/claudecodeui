@@ -42,7 +42,7 @@ type TerminalShortcutsPanelProps = {
   bottomOffset?: string;
 };
 
-const preventFocusSteal = (e: React.PointerEvent) => e.preventDefault();
+const preventFocusSteal = (e: PointerEvent) => e.preventDefault();
 
 const KEY_BTN =
   'shrink-0 rounded-md border border-gray-600 bg-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-100 transition-colors select-none active:bg-blue-600 active:text-white active:border-blue-600 disabled:cursor-not-allowed disabled:opacity-40';

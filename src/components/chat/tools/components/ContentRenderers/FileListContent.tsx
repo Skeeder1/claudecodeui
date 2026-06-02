@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 
 interface FileListItem {
   path: string;
@@ -15,7 +15,7 @@ interface FileListContentProps {
  * Renders a compact comma-separated list of clickable file names
  * Used by: Grep/Glob results
  */
-export const FileListContent: React.FC<FileListContentProps> = ({
+export const FileListContent: FC<FileListContentProps> = ({
   files,
   onFileClick,
   title

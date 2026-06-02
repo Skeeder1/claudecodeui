@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useState, useEffect, useMemo, useCallback, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownToLine,
@@ -69,16 +69,16 @@ export default function CommandPalette({
   onOpenSettings,
   onShowTab,
 }: CommandPaletteProps) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-  const [pages, setPages] = React.useState<Page[]>([]);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [pages, setPages] = useState<Page[]>([]);
   const { toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const ops = usePaletteOps();
 
   const page = pages.at(-1);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCmdK = (e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k';
       if (!isCmdK) return;
@@ -89,7 +89,7 @@ export default function CommandPalette({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) {
       setSearch('');
       setPages([]);
@@ -111,7 +111,7 @@ export default function CommandPalette({
   const branches = useBranchesSource(projectId, open && showBranches);
   const git = useGitActions(projectId);
 
-  const sessionRows = React.useMemo(() => {
+  const sessionRows = useMemo(() => {
     if (!showSessions) return [];
     type Row = { id: string; label: string; provider?: string; snippet?: string };
     const byId = new Map<string, Row>();
@@ -134,22 +134,22 @@ export default function CommandPalette({
     return Array.from(byId.values());
   }, [sessions, messageMatches, showSessions]);
 
-  const run = React.useCallback((fn: () => void) => {
+  const run = useCallback((fn: () => void) => {
     setOpen(false);
     fn();
   }, []);
 
-  const pushPage = React.useCallback((next: Page) => {
+  const pushPage = useCallback((next: Page) => {
     setSearch('');
     setPages((prev) => [...prev, next]);
   }, []);
 
-  const popPage = React.useCallback(() => {
+  const popPage = useCallback(() => {
     setSearch('');
     setPages((prev) => prev.slice(0, -1));
   }, []);
 
-  const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Backspace' && !search && pages.length > 0) {
       e.preventDefault();
       popPage();

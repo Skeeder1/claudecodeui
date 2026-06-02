@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useTasksSettings } from '../../../contexts/TasksSettingsContext';
@@ -430,4 +430,4 @@ function ChatInterface({
   );
 }
 
-export default React.memo(ChatInterface);
+export default memo(ChatInterface);

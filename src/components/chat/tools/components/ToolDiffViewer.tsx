@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 import type { DiffLine } from '../types';
 
 interface ToolDiffViewerProps {
@@ -14,7 +14,7 @@ interface ToolDiffViewerProps {
 /**
  * Compact diff viewer — VS Code-style
  */
-export const ToolDiffViewer: React.FC<ToolDiffViewerProps> = ({
+export const ToolDiffViewer: FC<ToolDiffViewerProps> = ({
   oldContent,
   newContent,
   filePath,
