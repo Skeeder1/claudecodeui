@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, type FC, type ReactNode } from 'react';
 
 import type { Project } from '../../../types/app';
 import type { SubagentChildTool } from '../types/types';
@@ -67,7 +67,7 @@ function deriveToolStatus(toolResult: unknown): ToolStatus {
  * Main tool renderer router
  * Routes to OneLineDisplay or CollapsibleDisplay based on tool config
  */
-export const ToolRenderer: React.FC<ToolRendererProps> = memo(({
+export const ToolRenderer: FC<ToolRendererProps> = memo(({
   toolName,
   toolInput,
   toolResult,
@@ -187,7 +187,7 @@ export const ToolRenderer: React.FC<ToolRendererProps> = memo(({
       onFileOpen
     }) || {};
 
-    let contentComponent: React.ReactNode = null;
+    let contentComponent: ReactNode = null;
 
     switch (displayConfig.contentType) {
       case 'diff':

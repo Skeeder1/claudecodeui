@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type RefObject, type Dispatch, type SetStateAction } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -40,7 +40,7 @@ type ProviderSelectionEmptyStateProps = {
   currentSessionId: string | null;
   provider: LLMProvider;
   setProvider: (next: LLMProvider) => void;
-  textareaRef: React.RefObject<HTMLTextAreaElement>;
+  textareaRef: RefObject<HTMLTextAreaElement>;
   claudeModel: string;
   setClaudeModel: (model: string) => void;
   cursorModel: string;
@@ -56,7 +56,7 @@ type ProviderSelectionEmptyStateProps = {
   tasksEnabled: boolean;
   isTaskMasterInstalled: boolean | null;
   onShowAllTasks?: (() => void) | null;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
+  setInput: Dispatch<SetStateAction<string>>;
 };
 
 type ProviderGroup = {

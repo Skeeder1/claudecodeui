@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { memo, useEffect } from 'react';
 
 import ChatInterface from '../../chat/view/ChatInterface';
 import FileTree from '../../file-tree/view/FileTree';
@@ -206,4 +206,4 @@ function MainContent({
   );
 }
 
-export default React.memo(MainContent);
+export default memo(MainContent);

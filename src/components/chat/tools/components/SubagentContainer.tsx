@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 import type { SubagentChildTool } from '../../types/types';
 import { CollapsibleSection } from './CollapsibleSection';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../../../../shared/view/ui';
@@ -40,7 +40,7 @@ const getCompactToolDisplay = (toolName: string, toolInput: unknown): string => 
   }
 };
 
-export const SubagentContainer: React.FC<SubagentContainerProps> = ({
+export const SubagentContainer: FC<SubagentContainerProps> = ({
   toolInput,
   toolResult,
   subagentState,

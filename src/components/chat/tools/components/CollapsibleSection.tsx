@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, type ReactNode } from 'react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
 
@@ -6,17 +6,14 @@ interface CollapsibleSectionProps {
   title: string;
   toolName?: string;
   open?: boolean;
-  action?: React.ReactNode;
-  badge?: React.ReactNode;
+  action?: ReactNode;
+  badge?: ReactNode;
   onTitleClick?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }
 
-/**
- * Reusable collapsible section with consistent styling
- */
-export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
+export const CollapsibleSection: FC<CollapsibleSectionProps> = ({
   title,
   toolName,
   open = false,

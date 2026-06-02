@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -10,7 +10,7 @@ import { normalizeInlineCodeFences } from '../../utils/chatFormatting';
 import { copyTextToClipboard } from '../../../../utils/clipboard';
 
 type MarkdownProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 };
 
@@ -18,7 +18,7 @@ type CodeBlockProps = {
   node?: { type?: string };
   inline?: boolean;
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 const CodeBlock = ({ node, inline, className, children, ...props }: CodeBlockProps) => {
@@ -118,27 +118,27 @@ const CodeBlock = ({ node, inline, className, children, ...props }: CodeBlockPro
 
 const markdownComponents = {
   code: CodeBlock,
-  blockquote: ({ children }: { children?: React.ReactNode }) => (
+  blockquote: ({ children }: { children?: ReactNode }) => (
     <blockquote className="my-2 border-l-4 border-gray-300 pl-4 italic text-gray-600 dark:border-gray-600 dark:text-gray-400">
       {children}
     </blockquote>
   ),
-  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+  a: ({ href, children }: { href?: string; children?: ReactNode }) => (
     <a href={href} className="text-blue-600 hover:underline dark:text-blue-400" target="_blank" rel="noopener noreferrer">
       {children}
     </a>
   ),
-  p: ({ children }: { children?: React.ReactNode }) => <div className="mb-2 last:mb-0">{children}</div>,
-  table: ({ children }: { children?: React.ReactNode }) => (
+  p: ({ children }: { children?: ReactNode }) => <div className="mb-2 last:mb-0">{children}</div>,
+  table: ({ children }: { children?: ReactNode }) => (
     <div className="my-2 overflow-x-auto">
       <table className="min-w-full border-collapse border border-gray-200 dark:border-gray-700">{children}</table>
     </div>
   ),
-  thead: ({ children }: { children?: React.ReactNode }) => <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>,
-  th: ({ children }: { children?: React.ReactNode }) => (
+  thead: ({ children }: { children?: ReactNode }) => <thead className="bg-gray-50 dark:bg-gray-800">{children}</thead>,
+  th: ({ children }: { children?: ReactNode }) => (
     <th className="border border-gray-200 px-3 py-2 text-left text-sm font-semibold dark:border-gray-700">{children}</th>
   ),
-  td: ({ children }: { children?: React.ReactNode }) => (
+  td: ({ children }: { children?: ReactNode }) => (
     <td className="border border-gray-200 px-3 py-2 align-top text-sm dark:border-gray-700">{children}</td>
   ),
 };

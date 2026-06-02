@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type CSSProperties } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { Brain, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -23,8 +23,7 @@ function ThinkingModeSelector({ selectedMode, onModeChange, onClose, className =
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties | null>(null);
-  // Create translated modes for display
-  const translatedModes = thinkingModes.map(mode => {
+  const translatedModes = useMemo(() => thinkingModes.map(mode => {
     const modeKey = MODE_KEY_MAP[mode.id] || mode.id;
     return {
       ...mode,
@@ -32,7 +31,7 @@ function ThinkingModeSelector({ selectedMode, onModeChange, onClose, className =
       description: t(`thinkingMode.modes.${modeKey}.description`),
       prefix: t(`thinkingMode.modes.${modeKey}.prefix`)
     };
-  });
+  }), [t]);
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false);

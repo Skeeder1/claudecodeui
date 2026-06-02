@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 import { ChevronsUpDown, FileText } from 'lucide-react';
 
 import {
@@ -27,7 +27,7 @@ interface PlanDisplayProps {
 
 // Plan display is now read-only. Build/Revise actions were tied to the removed
 // permission flow — the SDK/CLI now handles plan acceptance natively.
-export const PlanDisplay: React.FC<PlanDisplayProps> = ({
+export const PlanDisplay: FC<PlanDisplayProps> = ({
   title,
   content,
   defaultOpen = false,

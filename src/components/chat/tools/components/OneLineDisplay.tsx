@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import { copyTextToClipboard } from '../../../../utils/clipboard';
 import { ToolStatusBadge } from './ToolStatusBadge';
 import type { ToolStatus } from './ToolStatusBadge';
@@ -32,7 +32,7 @@ interface OneLineDisplayProps {
  * Unified one-line display for simple tool inputs and results
  * Used by: Bash, Read, Grep/Glob (minimized), TodoRead, etc.
  */
-export const OneLineDisplay: React.FC<OneLineDisplayProps> = ({
+export const OneLineDisplay: FC<OneLineDisplayProps> = ({
   toolName,
   icon,
   label,
