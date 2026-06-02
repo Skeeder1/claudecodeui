@@ -6,10 +6,6 @@ interface TextContentProps {
   className?: string;
 }
 
-/**
- * Renders plain text, JSON, or code content
- * Used by: Raw parameters, generic text results, JSON responses
- */
 export const TextContent: FC<TextContentProps> = ({
   content,
   format = 'plain',

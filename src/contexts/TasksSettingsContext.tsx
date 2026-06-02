@@ -1,11 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode, type Dispatch, type SetStateAction } from 'react';
 import { api } from '../utils/api';
 
 type InstallationStatus = Record<string, unknown> | null;
 
 type TasksSettingsContextValue = {
   tasksEnabled: boolean;
-  setTasksEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setTasksEnabled: Dispatch<SetStateAction<boolean>>;
   toggleTasksEnabled: () => void;
   isTaskMasterInstalled: boolean | null;
   isTaskMasterReady: boolean | null;

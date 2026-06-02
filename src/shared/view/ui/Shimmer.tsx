@@ -1,14 +1,14 @@
-import * as React from 'react';
+import { memo, type ElementType } from 'react';
 
 import { cn } from '../../../lib/utils';
 
 interface ShimmerProps {
   children: string;
   className?: string;
-  as?: React.ElementType;
+  as?: ElementType;
 }
 
-const Shimmer = React.memo<ShimmerProps>(({ children, className, as: Component = 'span' }) => {
+const Shimmer = memo<ShimmerProps>(({ children, className, as: Component = 'span' }) => {
   return (
     <Component
       className={cn(
