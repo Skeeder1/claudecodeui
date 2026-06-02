@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  build:
+    name: Build & Type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build client
+        run: npm run build:client
+
+      - name: Build server
+        run: npm run build:server
+
+      - name: Verify build artifacts
+        run: |
+          test -d dist          && echo "client build OK"  || (echo "dist/ missing" && exit 1)
+          test -f dist-server/server/index.js && echo "server build OK" || (echo "dist-server/server/index.js missing" && exit 1)
