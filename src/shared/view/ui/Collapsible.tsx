@@ -1,4 +1,14 @@
-import * as React from 'react';
+import {
+  createContext,
+  useContext,
+  forwardRef,
+  useState,
+  useCallback,
+  useMemo,
+  type HTMLAttributes,
+  type ButtonHTMLAttributes,
+  type MouseEvent,
+} from 'react';
 
 import { cn } from '../../../lib/utils';
 
@@ -7,26 +17,26 @@ interface CollapsibleContextValue {
   onOpenChange: (open: boolean) => void;
 }
 
-const CollapsibleContext = React.createContext<CollapsibleContextValue | null>(null);
+const CollapsibleContext = createContext<CollapsibleContextValue | null>(null);
 
 function useCollapsible() {
-  const ctx = React.useContext(CollapsibleContext);
+  const ctx = useContext(CollapsibleContext);
   if (!ctx) throw new Error('Collapsible components must be used within <Collapsible>');
   return ctx;
 }
 
-interface CollapsibleProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CollapsibleProps extends HTMLAttributes<HTMLDivElement> {
   defaultOpen?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
+const Collapsible = forwardRef<HTMLDivElement, CollapsibleProps>(
   ({ defaultOpen = false, open: controlledOpen, onOpenChange: controlledOnOpenChange, className, children, ...props }, ref) => {
-    const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
+    const [internalOpen, setInternalOpen] = useState(defaultOpen);
     const isControlled = controlledOpen !== undefined;
     const open = isControlled ? controlledOpen : internalOpen;
-    const onOpenChange = React.useCallback(
+    const onOpenChange = useCallback(
       (next: boolean) => {
         if (!isControlled) setInternalOpen(next);
         controlledOnOpenChange?.(next);
@@ -34,7 +44,7 @@ const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
       [isControlled, controlledOnOpenChange]
     );
 
-    const value = React.useMemo(() => ({ open, onOpenChange }), [open, onOpenChange]);
+    const value = useMemo(() => ({ open, onOpenChange }), [open, onOpenChange]);
 
     return (
       <CollapsibleContext.Provider value={value}>
@@ -47,12 +57,12 @@ const Collapsible = React.forwardRef<HTMLDivElement, CollapsibleProps>(
 );
 Collapsible.displayName = 'Collapsible';
 
-const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+const CollapsibleTrigger = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ onClick, children, className, ...props }, ref) => {
     const { open, onOpenChange } = useCollapsible();
 
-    const handleClick = React.useCallback(
-      (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = useCallback(
+      (e: MouseEvent<HTMLButtonElement>) => {
         onOpenChange(!open);
         onClick?.(e);
       },
@@ -76,7 +86,7 @@ const CollapsibleTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLA
 );
 CollapsibleTrigger.displayName = 'CollapsibleTrigger';
 
-const CollapsibleContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+const CollapsibleContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, children, ...props }, ref) => {
     const { open } = useCollapsible();
 

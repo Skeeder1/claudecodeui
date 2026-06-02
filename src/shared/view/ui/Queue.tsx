@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { createContext, useContext, forwardRef, useMemo, type HTMLAttributes } from 'react';
 import { cn } from '../../../lib/utils';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -11,17 +11,17 @@ interface QueueItemContextValue {
   status: QueueItemStatus;
 }
 
-const QueueItemContext = React.createContext<QueueItemContextValue | null>(null);
+const QueueItemContext = createContext<QueueItemContextValue | null>(null);
 
 function useQueueItem() {
-  const ctx = React.useContext(QueueItemContext);
+  const ctx = useContext(QueueItemContext);
   if (!ctx) throw new Error('QueueItem sub-components must be used within <QueueItem>');
   return ctx;
 }
 
 /* ─── Queue ──────────────────────────────────────────────────────── */
 
-export const Queue = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+export const Queue = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
@@ -36,13 +36,13 @@ Queue.displayName = 'Queue';
 
 /* ─── QueueItem ──────────────────────────────────────────────────── */
 
-export interface QueueItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface QueueItemProps extends HTMLAttributes<HTMLDivElement> {
   status?: QueueItemStatus;
 }
 
-export const QueueItem = React.forwardRef<HTMLDivElement, QueueItemProps>(
+export const QueueItem = forwardRef<HTMLDivElement, QueueItemProps>(
   ({ status = 'pending', className, children, ...props }, ref) => {
-    const value = React.useMemo(() => ({ status }), [status]);
+    const value = useMemo(() => ({ status }), [status]);
 
     return (
       <QueueItemContext.Provider value={value}>
@@ -64,7 +64,7 @@ QueueItem.displayName = 'QueueItem';
 
 /* ─── QueueItemIndicator ─────────────────────────────────────────── */
 
-export const QueueItemIndicator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+export const QueueItemIndicator = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => {
     const { status } = useQueueItem();
 
@@ -97,7 +97,7 @@ QueueItemIndicator.displayName = 'QueueItemIndicator';
 
 /* ─── QueueItemContent ───────────────────────────────────────────── */
 
-export const QueueItemContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+export const QueueItemContent = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   ({ className, children, ...props }, ref) => {
     const { status } = useQueueItem();
 
