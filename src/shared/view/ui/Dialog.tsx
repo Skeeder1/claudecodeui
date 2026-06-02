@@ -1,4 +1,21 @@
-import * as React from 'react';
+import {
+  createContext,
+  useContext,
+  forwardRef,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+  isValidElement,
+  cloneElement,
+  type FC,
+  type ReactNode,
+  type MutableRefObject,
+  type HTMLAttributes,
+  type ButtonHTMLAttributes,
+  type MouseEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../../../lib/utils';
@@ -6,13 +23,13 @@ import { cn } from '../../../lib/utils';
 interface DialogContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  triggerRef: React.MutableRefObject<HTMLElement | null>;
+  triggerRef: MutableRefObject<HTMLElement | null>;
 }
 
-const DialogContext = React.createContext<DialogContextValue | null>(null);
+const DialogContext = createContext<DialogContextValue | null>(null);
 
 function useDialog() {
-  const ctx = React.useContext(DialogContext);
+  const ctx = useContext(DialogContext);
   if (!ctx) throw new Error('Dialog components must be used within <Dialog>');
   return ctx;
 }
@@ -21,15 +38,15 @@ interface DialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const Dialog: React.FC<DialogProps> = ({ open: controlledOpen, onOpenChange: controlledOnOpenChange, defaultOpen = false, children }) => {
-  const [internalOpen, setInternalOpen] = React.useState(defaultOpen);
-  const triggerRef = React.useRef<HTMLElement | null>(null) as React.MutableRefObject<HTMLElement | null>;
+const Dialog: FC<DialogProps> = ({ open: controlledOpen, onOpenChange: controlledOnOpenChange, defaultOpen = false, children }) => {
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const triggerRef = useRef<HTMLElement | null>(null) as MutableRefObject<HTMLElement | null>;
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
-  const onOpenChange = React.useCallback(
+  const onOpenChange = useCallback(
     (next: boolean) => {
       if (!isControlled) setInternalOpen(next);
       controlledOnOpenChange?.(next);
@@ -37,35 +54,34 @@ const Dialog: React.FC<DialogProps> = ({ open: controlledOpen, onOpenChange: con
     [isControlled, controlledOnOpenChange]
   );
 
-  const value = React.useMemo(() => ({ open, onOpenChange, triggerRef }), [open, onOpenChange]);
+  const value = useMemo(() => ({ open, onOpenChange, triggerRef }), [open, onOpenChange]);
 
   return <DialogContext.Provider value={value}>{children}</DialogContext.Provider>;
 };
 
-const DialogTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }>(
+const DialogTrigger = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { asChild?: boolean }>(
   ({ onClick, children, asChild, ...props }, ref) => {
     const { onOpenChange, triggerRef } = useDialog();
 
-    const handleClick = React.useCallback(
-      (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleClick = useCallback(
+      (e: MouseEvent<HTMLButtonElement>) => {
         onOpenChange(true);
         onClick?.(e);
       },
       [onOpenChange, onClick]
     );
 
-    // asChild: clone child element and compose onClick + capture ref
-    if (asChild && React.isValidElement(children)) {
+    if (asChild && isValidElement(children)) {
       const child = children as React.ReactElement<Record<string, unknown>>;
-      return React.cloneElement(child, {
-        onClick: (e: React.MouseEvent<HTMLElement>) => {
+      return cloneElement(child, {
+        onClick: (e: MouseEvent<HTMLElement>) => {
           onOpenChange(true);
-          (child.props.onClick as ((e: React.MouseEvent<HTMLElement>) => void) | undefined)?.(e);
+          (child.props.onClick as ((e: MouseEvent<HTMLElement>) => void) | undefined)?.(e);
         },
         ref: (node: HTMLElement | null) => {
           triggerRef.current = node;
           if (typeof ref === 'function') ref(node as HTMLButtonElement | null);
-          else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
+          else if (ref) (ref as MutableRefObject<HTMLElement | null>).current = node;
         },
       });
     }
@@ -88,32 +104,30 @@ const DialogTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttrib
 );
 DialogTrigger.displayName = 'DialogTrigger';
 
-interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
+interface DialogContentProps extends HTMLAttributes<HTMLDivElement> {
   onEscapeKeyDown?: () => void;
   onPointerDownOutside?: () => void;
 }
 
 const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
+const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, onEscapeKeyDown, onPointerDownOutside, ...props }, ref) => {
     const { open, onOpenChange, triggerRef } = useDialog();
-    const contentRef = React.useRef<HTMLDivElement | null>(null);
-    const previousFocusRef = React.useRef<HTMLElement | null>(null);
+    const contentRef = useRef<HTMLDivElement | null>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
 
-    // Save the element that had focus before opening, restore on close
-    React.useEffect(() => {
+    useEffect(() => {
       if (open) {
         previousFocusRef.current = document.activeElement as HTMLElement;
       } else if (previousFocusRef.current) {
-        // Prefer the trigger, fall back to whatever was focused before
         const restoreTarget = triggerRef.current || previousFocusRef.current;
         restoreTarget?.focus();
         previousFocusRef.current = null;
       }
     }, [open, triggerRef]);
 
-    React.useEffect(() => {
+    useEffect(() => {
       if (!open) return;
 
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,7 +138,6 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           return;
         }
 
-        // Focus trap: Tab / Shift+Tab cycle within the dialog
         if (e.key === 'Tab' && contentRef.current) {
           const focusable = Array.from(
             contentRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
@@ -146,7 +159,6 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 
       document.addEventListener('keydown', handleKeyDown, true);
 
-      // Prevent body scroll
       const prev = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
 
@@ -156,10 +168,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
       };
     }, [open, onOpenChange, onEscapeKeyDown]);
 
-    // Auto-focus first focusable element on open
-    React.useEffect(() => {
+    useEffect(() => {
       if (open && contentRef.current) {
-        // Small delay to let the portal render
         requestAnimationFrame(() => {
           const first = contentRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
           first?.focus();
@@ -171,7 +181,6 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 
     return createPortal(
       <div className="fixed inset-0 z-50">
-        {/* Overlay */}
         <div
           className="fixed inset-0 animate-dialog-overlay-show bg-black/50 backdrop-blur-sm"
           onClick={() => {
@@ -180,12 +189,11 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           }}
           aria-hidden
         />
-        {/* Content */}
         <div
           ref={(node) => {
             contentRef.current = node;
             if (typeof ref === 'function') ref(node);
-            else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            else if (ref) (ref as MutableRefObject<HTMLDivElement | null>).current = node;
           }}
           role="dialog"
           aria-modal="true"
@@ -206,7 +214,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 );
 DialogContent.displayName = 'DialogContent';
 
-const DialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
+const DialogTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
     <h2 ref={ref} className={cn('sr-only', className)} {...props} />
   )
