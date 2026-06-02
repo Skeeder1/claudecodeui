@@ -24,7 +24,7 @@ function AppContentInner() {
   const { sessionId } = useParams<{ sessionId?: string }>();
   const { t } = useTranslation('common');
   const { isMobile } = useDeviceSettings({ trackPWA: false });
-  const { ws, sendMessage, latestMessage, isConnected } = useWebSocket();
+  const { ws, sendMessage, latestMessage } = useWebSocket();
 
   const {
     activeSessions,

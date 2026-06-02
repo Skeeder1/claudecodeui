@@ -110,8 +110,9 @@ export async function createGitHubBranch(
     const { data: ref } = await octokit.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
     await octokit.git.createRef({ owner, repo, ref: `refs/heads/${branchName}`, sha: ref.object.sha });
     console.log(`✅ Created branch '${branchName}' on GitHub`);
-  } catch (error: any) {
-    if (error.status === 422 && error.message.includes('Reference already exists')) {
+  } catch (error: unknown) {
+    const e = error as { status?: number; message?: string };
+    if (e.status === 422 && typeof e.message === 'string' && e.message.includes('Reference already exists')) {
       console.log(`ℹ️ Branch '${branchName}' already exists on GitHub`);
     } else {
       throw error;
@@ -160,8 +161,8 @@ export async function cloneGitHubRepo(
         } catch {
           throw new Error(`Directory ${cloneDir} already exists but is not a valid git repository or git command failed`);
         }
-      } catch (accessError: any) {
-        if (accessError.code !== 'ENOENT') throw accessError;
+      } catch (accessError: unknown) {
+        if ((accessError as NodeJS.ErrnoException).code !== 'ENOENT') throw accessError;
       }
 
       await fs.mkdir(path.dirname(cloneDir), { recursive: true });

@@ -255,11 +255,8 @@ function Sidebar({
             conversationResults={conversationResults}
             isSearching={isSearching}
             searchProgress={searchProgress}
-            starredSessions={starredSessions}
-            recentSessions={recentSessions}
             mergedFavoriteGroups={mergedFavoriteGroups}
             isStarredSessionsLoading={isStarredSessionsLoading}
-            onToggleStarSession={toggleStarSession}
             onMarkSessionRead={markStarredSessionRead}
             onRestoreArchivedProject={restoreArchivedProject}
             onArchivedSessionClick={openArchivedSession}

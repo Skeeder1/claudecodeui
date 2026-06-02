@@ -491,8 +491,8 @@ export const runMigrations = (db: Database) => {
 
     db.exec(LAST_SCANNED_AT_SQL);
     console.log('Database migrations completed successfully');
-  } catch (error: any) {
-    console.error('Error running migrations:', error.message);
+  } catch (error: unknown) {
+    console.error('Error running migrations:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 };

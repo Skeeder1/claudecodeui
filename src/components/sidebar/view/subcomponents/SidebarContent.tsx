@@ -3,9 +3,8 @@ import { Archive, Folder, MessageSquare, RotateCcw, Search, Trash2 } from 'lucid
 import type { TFunction } from 'i18next';
 import { ScrollArea, Spinner } from '../../../../shared/view/ui';
 import { formatCompactAge } from '../../../../lib/dateTime';
-import type { Project } from '../../../../types/app';
-import type { ReleaseInfo } from '../../../../types/app';
-import type { ConversationSearchResults, MergedFavoriteGroup, SearchProgress, StarredSessionGroup } from '../../hooks/useSidebarController';
+import type { Project, ReleaseInfo } from '../../../../types/app';
+import type { ConversationSearchResults, MergedFavoriteGroup, SearchProgress } from '../../hooks/useSidebarController';
 import type { ArchivedProjectListItem, ArchivedSessionListItem, SidebarSearchMode } from '../../types/types';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
 import SidebarFooter from './SidebarFooter';
@@ -103,11 +102,8 @@ type SidebarContentProps = {
   conversationResults: ConversationSearchResults | null;
   isSearching: boolean;
   searchProgress: SearchProgress | null;
-  starredSessions: StarredSessionGroup[] | null;
-  recentSessions: StarredSessionGroup[] | null;
   mergedFavoriteGroups: MergedFavoriteGroup[];
   isStarredSessionsLoading: boolean;
-  onToggleStarSession: (sessionId: string) => void;
   onMarkSessionRead: (sessionId: string) => void;
   onRestoreArchivedProject: (projectId: string) => void;
   onArchivedSessionClick: (session: ArchivedSessionListItem) => void;
@@ -147,11 +143,8 @@ export default function SidebarContent({
   conversationResults,
   isSearching,
   searchProgress,
-  starredSessions,
-  recentSessions,
   mergedFavoriteGroups,
   isStarredSessionsLoading,
-  onToggleStarSession,
   onMarkSessionRead,
   onRestoreArchivedProject,
   onArchivedSessionClick,

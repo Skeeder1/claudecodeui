@@ -3,14 +3,18 @@
  * Defines display behavior for all tool types 
  */
 
+export type ToolInputData = Record<string, unknown>;
+export type ToolResultData = Record<string, unknown>;
+export type ContentProps = Record<string, unknown>;
+
 export interface ToolDisplayConfig {
   input: {
     type: 'one-line' | 'collapsible' | 'plan' | 'hidden';
     // One-line config
     icon?: string;
     label?: string;
-    getValue?: (input: any) => string;
-    getSecondary?: (input: any) => string | undefined;
+    getValue?: (input: ToolInputData) => string;
+    getSecondary?: (input: ToolInputData) => string | undefined;
     action?: 'copy' | 'open-file' | 'jump-to-results' | 'none';
     style?: string;
     wrapText?: boolean;
@@ -22,22 +26,22 @@ export interface ToolDisplayConfig {
       icon?: string;
     };
     // Collapsible config
-    title?: string | ((input: any) => string);
+    title?: string | ((input: ToolInputData) => string);
     defaultOpen?: boolean;
     contentType?: 'diff' | 'markdown' | 'file-list' | 'todo-list' | 'text' | 'task' | 'question-answer';
-    getContentProps?: (input: any, helpers?: any) => any;
+    getContentProps?: (input: ToolInputData, helpers?: Record<string, unknown>) => ContentProps;
     actionButton?: 'file-button' | 'none';
   };
   result?: {
     hidden?: boolean;
     hideOnSuccess?: boolean;
     type?: 'one-line' | 'collapsible' | 'plan' | 'special';
-    title?: string | ((result: any) => string);
+    title?: string | ((result: ToolResultData) => string);
     defaultOpen?: boolean;
     // Special result handlers
     contentType?: 'markdown' | 'file-list' | 'todo-list' | 'text' | 'success-message' | 'task' | 'question-answer';
-    getMessage?: (result: any) => string;
-    getContentProps?: (result: any) => any;
+    getMessage?: (result: ToolResultData) => string;
+    getContentProps?: (result: ToolResultData) => ContentProps;
   };
 }
 
@@ -446,9 +450,9 @@ export const TOOL_CONFIGS: Record<string, ToolDisplayConfig> = {
           }
           // If content is an array (typical for agent responses with multiple text blocks)
           if (Array.isArray(content)) {
-            const textContent = content
-              .filter((item: any) => item.type === 'text')
-              .map((item: any) => item.text)
+            const textContent = (content as Array<Record<string, unknown>>)
+              .filter((item) => item['type'] === 'text')
+              .map((item) => item['text'])
               .join('\n\n');
             return { content: textContent || 'No response text' };
           }
@@ -467,20 +471,23 @@ export const TOOL_CONFIGS: Record<string, ToolDisplayConfig> = {
   AskUserQuestion: {
     input: {
       type: 'collapsible',
-      title: (input: any) => {
-        const count = input.questions?.length || 0;
-        const hasAnswers = input.answers && Object.keys(input.answers).length > 0;
+      title: (input) => {
+        const questions = Array.isArray(input['questions']) ? input['questions'] : [];
+        const answers = input['answers'] && typeof input['answers'] === 'object' ? input['answers'] as Record<string, unknown> : {};
+        const count = questions.length;
+        const hasAnswers = Object.keys(answers).length > 0;
         if (count === 1) {
-          const header = input.questions[0]?.header || 'Question';
+          const first = questions[0] as Record<string, unknown> | undefined;
+          const header = typeof first?.['header'] === 'string' ? first['header'] : 'Question';
           return hasAnswers ? `${header} — answered` : header;
         }
         return hasAnswers ? `${count} questions — answered` : `${count} questions`;
       },
       defaultOpen: true,
       contentType: 'question-answer',
-      getContentProps: (input: any) => ({
-        questions: input.questions || [],
-        answers: input.answers || {}
+      getContentProps: (input) => ({
+        questions: Array.isArray(input['questions']) ? input['questions'] : [],
+        answers: input['answers'] ?? {}
       }),
     },
     result: {

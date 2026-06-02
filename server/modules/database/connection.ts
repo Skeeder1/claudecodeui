@@ -82,8 +82,8 @@ function migrateLegacyDatabase(targetPath: string): void {
         fs.copyFileSync(src, targetPath + suffix);
       }
     }
-  } catch (err: any) {
-    console.error('Could not migrate legacy database', { error: err.message });
+  } catch (err: unknown) {
+    console.error('Could not migrate legacy database', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 

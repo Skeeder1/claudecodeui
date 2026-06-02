@@ -123,7 +123,6 @@ export function useChatSessionState({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [searchTarget, setSearchTarget] = useState<{ timestamp?: string; uuid?: string; snippet?: string } | null>(null);
   const searchScrollActiveRef = useRef(false);
-  const isLoadingSessionRef = useRef(false);
   const isLoadingMoreRef = useRef(false);
   const allMessagesLoadedRef = useRef(false);
   const topLoadLockRef = useRef(false);
@@ -319,6 +318,7 @@ export function useChatSessionState({
       const sessionProvider = selectedSession.__provider || 'claude';
 
       isLoadingMoreRef.current = true;
+      setIsLoadingMoreMessages(true);
       const previousScrollHeight = container.scrollHeight;
       const previousScrollTop = container.scrollTop;
 
@@ -339,6 +339,7 @@ export function useChatSessionState({
         return true;
       } finally {
         isLoadingMoreRef.current = false;
+        setIsLoadingMoreMessages(false);
       }
     },
     [hasMoreMessages, isLoadingMoreMessages, selectedProject, selectedSession, sessionStore],

@@ -869,14 +869,7 @@ export function useChatComposerState({
         }
       }
     },
-    [
-      handleCommandMenuKeyDown,
-      handleFileMentionsKeyDown,
-      handleSubmit,
-      sendByCtrlEnter,
-      showCommandMenu,
-      showFileDropdown,
-    ],
+    [handleCommandMenuKeyDown, handleFileMentionsKeyDown, handleSubmit, sendByCtrlEnter],
   );
 
   const handleTextareaClick = useCallback(
@@ -928,6 +921,7 @@ export function useChatComposerState({
 
     const candidateSessionIds = [
       currentSessionId,
+      pendingSessionId,
       provider === 'cursor' ? cursorSessionId : null,
       selectedSession?.id || null,
     ];
@@ -945,7 +939,7 @@ export function useChatComposerState({
       sessionId: targetSessionId,
       provider,
     });
-  }, [canAbortSession, currentSessionId, isConnected, pendingViewSessionRef, provider, selectedSession?.id, sendMessage]);
+  }, [canAbortSession, currentSessionId, isConnected, provider, selectedSession?.id, sendMessage]);
 
   const [isInputFocused, setIsInputFocused] = useState(false);
 
