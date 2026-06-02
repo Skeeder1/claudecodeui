@@ -257,11 +257,11 @@ export class GeminiSessionsProvider implements IProviderSessions {
       return [];
     }
 
-    const ts = raw.timestamp || new Date().toISOString();
-    const baseId = raw.uuid || generateMessageId('gemini');
+    const ts = typeof raw.timestamp === 'string' ? raw.timestamp : new Date().toISOString();
+    const baseId = typeof raw.uuid === 'string' ? raw.uuid : generateMessageId('gemini');
 
     if (raw.type === 'message' && raw.role === 'assistant') {
-      const content = raw.content || '';
+      const content = typeof raw.content === 'string' ? raw.content : '';
       const messages: NormalizedMessage[] = [];
       if (content) {
         messages.push(createNormalizedMessage({
@@ -291,9 +291,9 @@ export class GeminiSessionsProvider implements IProviderSessions {
         timestamp: ts,
         provider: PROVIDER,
         kind: 'tool_use',
-        toolName: raw.tool_name,
-        toolInput: raw.parameters || {},
-        toolId: raw.tool_id || baseId,
+        toolName: typeof raw.tool_name === 'string' ? raw.tool_name : undefined,
+        toolInput: raw.parameters ?? {},
+        toolId: typeof raw.tool_id === 'string' ? raw.tool_id : baseId,
       })];
     }
 
@@ -304,7 +304,7 @@ export class GeminiSessionsProvider implements IProviderSessions {
         timestamp: ts,
         provider: PROVIDER,
         kind: 'tool_result',
-        toolId: raw.tool_id || '',
+        toolId: typeof raw.tool_id === 'string' ? raw.tool_id : '',
         content: raw.output === undefined ? '' : String(raw.output),
         isError: raw.status === 'error',
       })];
@@ -317,14 +317,15 @@ export class GeminiSessionsProvider implements IProviderSessions {
         provider: PROVIDER,
         kind: 'stream_end',
       })];
-      if (raw.stats?.total_tokens) {
+      const stats = raw.stats && typeof raw.stats === 'object' ? raw.stats as Record<string, unknown> : null;
+      if (stats?.total_tokens) {
         messages.push(createNormalizedMessage({
           sessionId,
           timestamp: ts,
           provider: PROVIDER,
           kind: 'status',
           text: 'Complete',
-          tokens: raw.stats.total_tokens,
+          tokens: Number(stats.total_tokens),
           canInterrupt: false,
         }));
       }
@@ -338,7 +339,7 @@ export class GeminiSessionsProvider implements IProviderSessions {
         timestamp: ts,
         provider: PROVIDER,
         kind: 'error',
-        content: raw.error || raw.message || 'Unknown Gemini streaming error',
+        content: typeof raw.error === 'string' ? raw.error : typeof raw.message === 'string' ? raw.message : 'Unknown Gemini streaming error',
       })];
     }
 
@@ -368,12 +369,13 @@ export class GeminiSessionsProvider implements IProviderSessions {
 
     for (let i = 0; i < rawMessages.length; i++) {
       const raw = rawMessages[i];
-      const ts = raw.timestamp || new Date().toISOString();
-      const baseId = raw.uuid || generateMessageId('gemini');
+      const ts = typeof raw.timestamp === 'string' ? raw.timestamp : new Date().toISOString();
+      const baseId = typeof raw.uuid === 'string' ? raw.uuid : generateMessageId('gemini');
+      const rawMsg = raw.message && typeof raw.message === 'object' ? raw.message as Record<string, unknown> : null;
 
       if (raw.type === 'thinking' || raw.isReasoning) {
-        const thinkingContent = typeof raw.message?.content === 'string'
-          ? raw.message.content
+        const thinkingContent = typeof rawMsg?.content === 'string'
+          ? rawMsg.content
           : typeof raw.content === 'string'
             ? raw.content
             : '';
@@ -398,9 +400,9 @@ export class GeminiSessionsProvider implements IProviderSessions {
           timestamp: ts,
           provider: PROVIDER,
           kind: 'tool_use',
-          toolName: raw.toolName || 'Tool',
+          toolName: typeof raw.toolName === 'string' ? raw.toolName : 'Tool',
           toolInput: raw.toolInput,
-          toolId: raw.toolCallId || baseId,
+          toolId: typeof raw.toolCallId === 'string' ? raw.toolCallId : baseId,
         }));
         continue;
       }
@@ -412,15 +414,15 @@ export class GeminiSessionsProvider implements IProviderSessions {
           timestamp: ts,
           provider: PROVIDER,
           kind: 'tool_result',
-          toolId: raw.toolCallId || '',
+          toolId: typeof raw.toolCallId === 'string' ? raw.toolCallId : '',
           content: raw.output === undefined ? '' : String(raw.output),
           isError: Boolean(raw.isError),
         }));
         continue;
       }
 
-      const role = raw.message?.role || raw.role;
-      const content = raw.message?.content || raw.content;
+      const role = rawMsg?.role || raw.role;
+      const content = rawMsg?.content || raw.content;
       if (!role || !content) {
         continue;
       }
@@ -465,9 +467,9 @@ export class GeminiSessionsProvider implements IProviderSessions {
               timestamp: ts,
               provider: PROVIDER,
               kind: 'tool_use',
-              toolName: part.name,
+              toolName: typeof part.name === 'string' ? part.name : undefined,
               toolInput: part.input,
-              toolId: part.id || generateMessageId('gemini_tool'),
+              toolId: typeof part.id === 'string' ? part.id : generateMessageId('gemini_tool'),
             }));
           } else if (part.type === 'tool_result') {
             normalized.push(createNormalizedMessage({
@@ -476,7 +478,7 @@ export class GeminiSessionsProvider implements IProviderSessions {
               timestamp: ts,
               provider: PROVIDER,
               kind: 'tool_result',
-              toolId: part.tool_use_id || '',
+              toolId: typeof part.tool_use_id === 'string' ? part.tool_use_id : '',
               content: part.content === undefined ? '' : String(part.content),
               isError: Boolean(part.is_error),
             }));

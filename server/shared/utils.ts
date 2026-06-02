@@ -489,10 +489,11 @@ const readProviderSessionActiveModelChangeCacheFile = async (
   try {
     const raw = await readFile(filePath, 'utf8');
     const parsed = readObjectRecord(JSON.parse(raw));
+    const entriesRecord = parsed ? readObjectRecord(parsed.entries) : null;
     if (
       !parsed
       || parsed.version !== PROVIDER_SESSION_ACTIVE_MODEL_CHANGE_CACHE_VERSION
-      || !readObjectRecord(parsed.entries)
+      || !entriesRecord
     ) {
       return {
         version: PROVIDER_SESSION_ACTIVE_MODEL_CHANGE_CACHE_VERSION,
@@ -501,7 +502,7 @@ const readProviderSessionActiveModelChangeCacheFile = async (
     }
 
     const entries = Object.fromEntries(
-      Object.entries(parsed.entries).filter((entry): entry is [string, ProviderSessionActiveModelChangeCacheEntry] =>
+      Object.entries(entriesRecord).filter((entry): entry is [string, ProviderSessionActiveModelChangeCacheEntry] =>
         isProviderSessionActiveModelChangeCacheEntry(entry[1]),
       ),
     );
