@@ -38,7 +38,7 @@ export function useSessionsSource(projectId: string | undefined, enabled: boolea
       ];
       return all.map<SessionResult>((s) => ({
         id: s.id,
-        label: (s.title || s.summary || s.name || s.id) as string,
+        label: s.title || s.summary || s.name || s.id,
         provider: s.__provider,
       }));
     },

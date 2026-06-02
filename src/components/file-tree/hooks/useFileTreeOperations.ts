@@ -140,7 +140,8 @@ export function useFileTreeOperations({
       onRefresh();
       handleCancelRename();
     } catch (err) {
-      showToast((err as Error).message, 'error');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg, 'error');
     } finally {
       setOperationLoading(false);
     }
@@ -180,7 +181,8 @@ export function useFileTreeOperations({
       onRefresh();
       handleCancelDelete();
     } catch (err) {
-      showToast((err as Error).message, 'error');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg, 'error');
     } finally {
       setOperationLoading(false);
     }
@@ -232,7 +234,8 @@ export function useFileTreeOperations({
       onRefresh();
       handleCancelCreate();
     } catch (err) {
-      showToast((err as Error).message, 'error');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg, 'error');
     } finally {
       setOperationLoading(false);
     }
@@ -330,7 +333,8 @@ export function useFileTreeOperations({
         await downloadSingleFile(item);
       }
     } catch (err) {
-      showToast((err as Error).message, 'error');
+      const msg = err instanceof Error ? err.message : String(err);
+      showToast(msg, 'error');
     } finally {
       setOperationLoading(false);
     }
