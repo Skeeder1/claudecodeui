@@ -3,7 +3,7 @@ import type { SubagentChildTool } from '../../types/types';
 import { CollapsibleSection } from './CollapsibleSection';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../../../../shared/view/ui';
 
-interface SubagentContainerProps {
+type SubagentContainerProps = {
   toolInput: unknown;
   toolResult?: { content?: unknown; isError?: boolean } | null;
   subagentState: {

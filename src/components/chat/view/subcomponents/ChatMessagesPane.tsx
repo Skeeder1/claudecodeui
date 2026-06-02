@@ -16,7 +16,7 @@ import ProviderSelectionEmptyState from './ProviderSelectionEmptyState';
 import { Spinner } from '../../../../shared/view/ui';
 import type { DiffCalculator } from '../../tools/types';
 
-interface ChatMessagesPaneProps {
+type ChatMessagesPaneProps = {
   scrollContainerRef: RefObject<HTMLDivElement>;
   onWheel: () => void;
   onTouchMove: () => void;

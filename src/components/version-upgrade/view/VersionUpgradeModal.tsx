@@ -7,7 +7,7 @@ import { copyTextToClipboard } from "../../../utils/clipboard";
 import type { InstallMode } from "../../../hooks/useVersionCheck";
 import { IS_PLATFORM } from "../../../constants/config";
 
-interface VersionUpgradeModalProps {
+type VersionUpgradeModalProps = {
     isOpen: boolean;
     onClose: () => void;
     releaseInfo: ReleaseInfo | null;

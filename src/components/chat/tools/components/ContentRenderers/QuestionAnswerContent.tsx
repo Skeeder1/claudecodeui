@@ -1,7 +1,7 @@
 import { useState, type FC } from 'react';
 import type { Question } from '../../../types/types';
 
-interface QuestionAnswerContentProps {
+type QuestionAnswerContentProps = {
   questions: Question[];
   answers: Record<string, string>;
   className?: string;

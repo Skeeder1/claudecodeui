@@ -1,7 +1,7 @@
 import { useMemo, type FC } from 'react';
 import type { DiffLine } from '../types';
 
-interface ToolDiffViewerProps {
+type ToolDiffViewerProps = {
   oldContent: string;
   newContent: string;
   filePath: string;
@@ -11,9 +11,6 @@ interface ToolDiffViewerProps {
   badgeColor?: 'gray' | 'green';
 }
 
-/**
- * Compact diff viewer — VS Code-style
- */
 export const ToolDiffViewer: FC<ToolDiffViewerProps> = ({
   oldContent,
   newContent,

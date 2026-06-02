@@ -8,7 +8,7 @@ interface TaskItem {
   blockedBy?: string[];
 }
 
-interface TaskListContentProps {
+type TaskListContentProps = {
   content: string;
 }
 
@@ -66,10 +66,6 @@ const statusConfig = {
   }
 };
 
-/**
- * Renders task list results with proper status icons and compact layout
- * Parses text content from TaskList/TaskGet results
- */
 export const TaskListContent: FC<TaskListContentProps> = ({ content }) => {
   const tasks = parseTaskContent(content);
 

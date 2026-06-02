@@ -45,7 +45,7 @@ interface SlashCommand {
   [key: string]: unknown;
 }
 
-interface ChatComposerProps {
+type ChatComposerProps = {
   claudeStatus: { text: string; tokens: number; can_interrupt: boolean } | null;
   isLoading: boolean;
   onAbortSession: () => void;

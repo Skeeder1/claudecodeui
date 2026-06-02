@@ -29,8 +29,8 @@ export default function PRDEditor({
   isNewFile = false,
   onSave,
 }: PRDEditorProps) {
-  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState<boolean>(false);
-  const [overwriteFileName, setOverwriteFileName] = useState<string>('');
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
+  const [overwriteFileName, setOverwriteFileName] = useState('');
 
   const { content, setContent, fileName, setFileName, loading, loadError } = usePrdDocument({
     file,

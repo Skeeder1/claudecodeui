@@ -21,7 +21,7 @@ const STATUS_CONFIG: Record<ToolStatus, { label: string; className: string }> = 
   },
 };
 
-interface ToolStatusBadgeProps {
+type ToolStatusBadgeProps = {
   status: ToolStatus;
   className?: string;
 }

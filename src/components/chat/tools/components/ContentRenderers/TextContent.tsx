@@ -1,6 +1,6 @@
 import { type FC } from 'react';
 
-interface TextContentProps {
+type TextContentProps = {
   content: string;
   format?: 'plain' | 'json' | 'code';
   className?: string;

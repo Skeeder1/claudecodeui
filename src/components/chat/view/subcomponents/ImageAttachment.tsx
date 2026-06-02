@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-interface ImageAttachmentProps {
+type ImageAttachmentProps = {
   file: File;
   onRemove: () => void;
   uploadProgress?: number;

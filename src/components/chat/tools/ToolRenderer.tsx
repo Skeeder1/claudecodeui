@@ -10,7 +10,7 @@ import { PlanDisplay } from './components/PlanDisplay';
 import { ToolStatusBadge } from './components/ToolStatusBadge';
 import type { ToolStatus } from './components/ToolStatusBadge';
 
-interface ToolRendererProps {
+type ToolRendererProps = {
   toolName: string;
   toolInput: unknown;
   toolResult?: unknown;
@@ -63,10 +63,6 @@ function deriveToolStatus(toolResult: unknown): ToolStatus {
   return 'completed';
 }
 
-/**
- * Main tool renderer router
- * Routes to OneLineDisplay or CollapsibleDisplay based on tool config
- */
 export const ToolRenderer: FC<ToolRendererProps> = memo(({
   toolName,
   toolInput,

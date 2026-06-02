@@ -2,7 +2,7 @@ import { type FC, type ReactNode } from 'react';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '../../../../shared/view/ui';
 import { cn } from '../../../../lib/utils';
 
-interface CollapsibleSectionProps {
+type CollapsibleSectionProps = {
   title: string;
   toolName?: string;
   open?: boolean;

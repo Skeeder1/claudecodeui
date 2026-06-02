@@ -33,11 +33,11 @@ export default function PrdEditorWorkspace({
   onClose,
   loadError,
 }: PrdEditorWorkspaceProps) {
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
-  const [previewMode, setPreviewMode] = useState<boolean>(false);
-  const [wordWrap, setWordWrap] = useState<boolean>(true);
-  const [showGenerateModal, setShowGenerateModal] = useState<boolean>(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [wordWrap, setWordWrap] = useState(true);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
 
   const handleOpenGenerateTasks = () => {
     if (!content.trim()) {

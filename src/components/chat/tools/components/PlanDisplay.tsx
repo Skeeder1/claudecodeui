@@ -14,7 +14,7 @@ import {
 
 import { MarkdownContent } from './ContentRenderers';
 
-interface PlanDisplayProps {
+type PlanDisplayProps = {
   title: string;
   content: string;
   defaultOpen?: boolean;

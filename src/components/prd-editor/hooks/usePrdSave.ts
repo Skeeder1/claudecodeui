@@ -23,8 +23,8 @@ export function usePrdSave({
   isExistingFile,
   onAfterSave,
 }: UsePrdSaveArgs): UsePrdSaveResult {
-  const [saving, setSaving] = useState<boolean>(false);
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const saveSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

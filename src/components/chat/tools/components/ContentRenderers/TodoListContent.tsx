@@ -10,10 +10,6 @@ const isTodoItem = (value: unknown): value is TodoItem => {
   return typeof todo.content === 'string' && typeof todo.status === 'string';
 };
 
-/**
- * Renders a todo list
- * Used by: TodoWrite, TodoRead
- */
 export const TodoListContent = memo(
   ({
     todos,

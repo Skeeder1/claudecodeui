@@ -5,16 +5,12 @@ interface FileListItem {
   onClick?: () => void;
 }
 
-interface FileListContentProps {
+type FileListContentProps = {
   files: string[] | FileListItem[];
   onFileClick?: (filePath: string) => void;
   title?: string;
 }
 
-/**
- * Renders a compact comma-separated list of clickable file names
- * Used by: Grep/Glob results
- */
 export const FileListContent: FC<FileListContentProps> = ({
   files,
   onFileClick,

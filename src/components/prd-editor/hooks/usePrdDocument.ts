@@ -27,8 +27,8 @@ export function usePrdDocument({
   projectPath,
 }: UsePrdDocumentArgs): UsePrdDocumentResult {
   const [content, setContent] = useState<string>(initialContent || '');
-  const [fileName, setFileNameState] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(!isNewFile);
+  const [fileName, setFileNameState] = useState('');
+  const [loading, setLoading] = useState(!isNewFile);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const setFileName = useCallback((nextFileName: string) => {

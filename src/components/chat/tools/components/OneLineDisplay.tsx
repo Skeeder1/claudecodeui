@@ -5,7 +5,7 @@ import type { ToolStatus } from './ToolStatusBadge';
 
 type ActionType = 'copy' | 'open-file' | 'jump-to-results' | 'none';
 
-interface OneLineDisplayProps {
+type OneLineDisplayProps = {
   toolName: string;
   icon?: string;
   label?: string;
