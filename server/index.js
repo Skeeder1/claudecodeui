@@ -22,6 +22,7 @@ import { findAppRoot, getModuleDir } from './utils/runtime-paths.js';
 import {
     queryClaudeSDK,
     abortClaudeSDKSession,
+    abortAllClaudeSDKSessions,
     isClaudeSDKSessionActive,
     getActiveClaudeSDKSessions,
     reconnectSessionWriter,
@@ -30,24 +31,28 @@ import {
 import {
     spawnCursor,
     abortCursorSession,
+    abortAllCursorSessions,
     isCursorSessionActive,
     getActiveCursorSessions,
 } from './cursor-cli.js';
 import {
     queryCodex,
     abortCodexSession,
+    abortAllCodexSessions,
     isCodexSessionActive,
     getActiveCodexSessions,
 } from './openai-codex.js';
 import {
     spawnGemini,
     abortGeminiSession,
+    abortAllGeminiSessions,
     isGeminiSessionActive,
     getActiveGeminiSessions,
 } from './gemini-cli.js';
 import {
     spawnOpenCode,
     abortOpenCodeSession,
+    abortAllOpenCodeSessions,
     isOpenCodeSessionActive,
     getActiveOpenCodeSessions,
 } from './opencode-cli.js';
@@ -73,7 +78,7 @@ import geminiRoutes from './routes/gemini.js';
 import pluginsRoutes from './routes/plugins.js';
 import providerRoutes from './modules/providers/provider.routes.js';
 import { startEnabledPluginServers, stopAllPlugins, getPluginPort } from './utils/plugin-process-manager.js';
-import { initializeDatabase, projectsDb, sessionsDb } from './modules/database/index.js';
+import { initializeDatabase, projectsDb, sessionsDb, closeConnection, getDatabasePath } from './modules/database/index.js';
 import { configureWebPush } from './services/vapid-keys.js';
 import { validateApiKey, authenticateToken, authenticateWebSocket } from './middleware/auth.js';
 import { IS_PLATFORM } from './constants/config.js';
@@ -1567,14 +1572,147 @@ const HOST = process.env.HOST || '0.0.0.0';
 const DISPLAY_HOST = getConnectableHost(HOST);
 const VITE_PORT = process.env.VITE_PORT || 5173;
 
+// PID file lives next to the SQLite DB so it shares the user-writable data dir.
+function getPidFilePath() {
+    return path.join(path.dirname(getDatabasePath()), 'cloudcli.pid');
+}
+
+// If a previous server is still alive, SIGTERM it and wait for it to release
+// the port. Without this, two servers race on the same DB/JSONL files after
+// `geko workspace rebuild`.
+async function takeoverFromPreviousInstance() {
+    const pidFile = getPidFilePath();
+    let oldPid;
+    try {
+        oldPid = parseInt(fs.readFileSync(pidFile, 'utf8').trim(), 10);
+    } catch {
+        return;
+    }
+    if (!Number.isFinite(oldPid) || oldPid === process.pid) return;
+    try {
+        process.kill(oldPid, 0); // probe existence
+    } catch {
+        // Stale pid file
+        try { fs.unlinkSync(pidFile); } catch {}
+        return;
+    }
+    console.log(`${c.info('[INFO]')} Previous cloudcli instance detected (pid=${oldPid}), sending SIGTERM...`);
+    try { process.kill(oldPid, 'SIGTERM'); } catch {}
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
+        try {
+            process.kill(oldPid, 0);
+            await new Promise(r => setTimeout(r, 200));
+        } catch {
+            try { fs.unlinkSync(pidFile); } catch {}
+            return;
+        }
+    }
+    console.log(`${c.warn('[WARN]')} Previous instance pid=${oldPid} did not exit after 10s, escalating to SIGKILL`);
+    try { process.kill(oldPid, 'SIGKILL'); } catch {}
+    try { fs.unlinkSync(pidFile); } catch {}
+}
+
+function writePidFile() {
+    const pidFile = getPidFilePath();
+    try {
+        fs.mkdirSync(path.dirname(pidFile), { recursive: true });
+        fs.writeFileSync(pidFile, String(process.pid));
+    } catch (err) {
+        console.warn(`${c.warn('[WARN]')} Could not write PID file ${pidFile}: ${err.message}`);
+    }
+}
+
+function removePidFile() {
+    try { fs.unlinkSync(getPidFilePath()); } catch {}
+}
+
+let isShuttingDown = false;
+async function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`\n${c.info('[INFO]')} Received ${signal}, shutting down gracefully...`);
+
+    // Hard fallback: if cleanup hangs (e.g. a kill never returns), force-exit
+    // after 10s so `geko workspace rebuild` is never blocked.
+    const hardExit = setTimeout(() => {
+        console.error(`${c.warn('[WARN]')} Shutdown timeout exceeded, force-exiting`);
+        removePidFile();
+        process.exit(1);
+    }, 10000);
+    hardExit.unref();
+
+    // 1. Stop accepting new connections. server.close waits for in-flight
+    //    requests, so call it without awaiting — WS+HTTP both close in parallel
+    //    with provider cleanup below.
+    try { server.close(); } catch (err) { console.warn('[shutdown] server.close failed:', err.message); }
+    try { wss?.close?.(); } catch (err) { console.warn('[shutdown] wss.close failed:', err.message); }
+
+    // 2. Abort every active provider session (Claude PTY, Codex, Gemini, ...).
+    //    Each call is independent — Promise.allSettled so one slow provider
+    //    can't block the others.
+    await Promise.allSettled([
+        Promise.resolve().then(() => abortAllClaudeSDKSessions(3000)),
+        Promise.resolve().then(() => abortAllCodexSessions()),
+        Promise.resolve().then(() => abortAllGeminiSessions()),
+        Promise.resolve().then(() => abortAllOpenCodeSessions()),
+        Promise.resolve().then(() => abortAllCursorSessions()),
+    ]);
+
+    // 3. Stop fs watchers + plugin processes + close DB
+    await Promise.allSettled([
+        closeSessionsWatcher(),
+        stopAllPlugins(),
+    ]);
+    try { closeConnection(); } catch (err) { console.warn('[shutdown] closeConnection failed:', err.message); }
+
+    removePidFile();
+    clearTimeout(hardExit);
+    process.exit(0);
+}
+
+function installShutdownHandlers() {
+    process.on('SIGTERM', () => void gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => void gracefulShutdown('SIGINT'));
+    process.on('SIGHUP', () => void gracefulShutdown('SIGHUP'));
+    process.on('uncaughtException', (err) => {
+        console.error('[FATAL] uncaughtException:', err);
+        void gracefulShutdown('uncaughtException');
+    });
+    process.on('unhandledRejection', (reason) => {
+        console.error('[FATAL] unhandledRejection:', reason);
+        void gracefulShutdown('unhandledRejection');
+    });
+}
+
 // Initialize database and start server
 async function startServer() {
     try {
+        // Kill any stale previous instance before we touch the DB or bind a port.
+        await takeoverFromPreviousInstance();
+
         // Initialize authentication database
         await initializeDatabase();
 
+        // Force-terminate sessions left "running" by a previous crash so the
+        // sidebar doesn't show stale activity. Orphaned provider processes (if
+        // any) cannot continue the run anyway — their websocket peer is gone.
+        try {
+            const reset = sessionsDb.resetRunningSessions();
+            if (reset > 0) {
+                console.log(`${c.info('[INFO]')} Reset ${reset} stale running session(s) from a previous run`);
+            }
+        } catch (err) {
+            console.warn(`${c.warn('[WARN]')} resetRunningSessions failed: ${err.message}`);
+        }
+
         // Configure Web Push (VAPID keys)
         configureWebPush();
+
+        // Install shutdown handlers BEFORE binding the port so a fast Ctrl+C
+        // still triggers the cleanup path.
+        installShutdownHandlers();
+        writePidFile();
 
         // Check if running in production mode (dist folder exists)
         const distIndexPath = path.join(APP_ROOT, 'dist', 'index.html');
@@ -1585,11 +1723,11 @@ async function startServer() {
         console.log('');
 
         if (isProduction) {
-            console.log(`${c.info('[INFO]')} To run in production mode, go to http://${DISPLAY_HOST}:${SERVER_PORT}`);            
+            console.log(`${c.info('[INFO]')} To run in production mode, go to http://${DISPLAY_HOST}:${SERVER_PORT}`);
         }
 
         console.log(`${c.info('[INFO]')} To run in development mode with hot-module replacement, go to http://${DISPLAY_HOST}:${VITE_PORT}`);
-   
+
         server.listen(SERVER_PORT, HOST, async () => {
             const appInstallPath = APP_ROOT;
 
@@ -1611,17 +1749,9 @@ async function startServer() {
                 console.error('[Plugins] Error during startup:', err.message);
             });
         });
-
-        await closeSessionsWatcher();
-        // Clean up plugin processes on shutdown
-        const shutdownPlugins = async () => {
-            await stopAllPlugins();
-            process.exit(0);
-        };
-        process.on('SIGTERM', () => void shutdownPlugins());
-        process.on('SIGINT', () => void shutdownPlugins());
     } catch (error) {
         console.error('[ERROR] Failed to start server:', error);
+        removePidFile();
         process.exit(1);
     }
 }

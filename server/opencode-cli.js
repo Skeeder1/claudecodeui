@@ -328,9 +328,18 @@ function getActiveOpenCodeSessions() {
   return Array.from(activeOpenCodeProcesses.keys());
 }
 
+function abortAllOpenCodeSessions() {
+  const keys = Array.from(activeOpenCodeProcesses.keys());
+  for (const sessionId of keys) {
+    try { abortOpenCodeSession(sessionId); } catch { }
+  }
+  return keys.length;
+}
+
 export {
   spawnOpenCode,
   abortOpenCodeSession,
+  abortAllOpenCodeSessions,
   isOpenCodeSessionActive,
   getActiveOpenCodeSessions,
 };

@@ -415,6 +415,17 @@ export function getActiveCodexSessions() {
   return sessions;
 }
 
+export function abortAllCodexSessions() {
+  const keys = Array.from(activeCodexSessions.keys());
+  let count = 0;
+  for (const sessionId of keys) {
+    try {
+      if (abortCodexSession(sessionId)) count++;
+    } catch { }
+  }
+  return count;
+}
+
 function sendMessage(ws, data) {
   try {
     if (ws.isSSEStreamWriter || ws.isWebSocketWriter) {

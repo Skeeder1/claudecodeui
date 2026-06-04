@@ -271,6 +271,25 @@ export const sessionsDb = {
     ).run(kind, normalized, sessionId);
   },
 
+  /**
+   * Force-terminates any session whose last event is not terminal. Called once
+   * at boot so sessions left "running" by a previous crash do not stay running
+   * forever in the sidebar — the orphaned provider processes are already dead
+   * by the time we reach here, so the in-flight run cannot continue anyway.
+   */
+  resetRunningSessions(): number {
+    const db = getConnection();
+    return db
+      .prepare(
+        `UPDATE sessions
+         SET last_event_kind = 'stop',
+             last_event_at = CURRENT_TIMESTAMP
+         WHERE last_event_kind IS NOT NULL
+           AND last_event_kind NOT IN ('stop', 'error', 'action_required')`
+      )
+      .run().changes;
+  },
+
   markSessionRead(sessionId: string): void {
     const db = getConnection();
     db.prepare(

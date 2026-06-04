@@ -635,6 +635,27 @@ function getActiveClaudeSDKSessions() {
   return getAllSessions();
 }
 
+async function abortAllClaudeSDKSessions(timeoutMs = 3000) {
+  const keys = getAllSessions();
+  const results = await Promise.allSettled(
+    keys.map((sessionId) =>
+      Promise.race([
+        abortClaudeSDKSession(sessionId),
+        new Promise((resolve) => setTimeout(() => resolve(false), timeoutMs)),
+      ])
+    )
+  );
+  // Force-destroy any remaining instance that didn't respond to interrupt()
+  for (const sessionId of keys) {
+    const session = getSession(sessionId);
+    if (session?.instance?.destroy) {
+      try { session.instance.destroy(); } catch { }
+      removeSession(sessionId);
+    }
+  }
+  return results.filter((r) => r.status === 'fulfilled' && r.value).length;
+}
+
 /**
  * Reconnect a session's WebSocketWriter to a new raw WebSocket.
  * Called when client reconnects (e.g. page refresh) while SDK is still running.
@@ -654,6 +675,7 @@ function reconnectSessionWriter(sessionId, newRawWs) {
 export {
   queryClaudeSDK,
   abortClaudeSDKSession,
+  abortAllClaudeSDKSessions,
   isClaudeSDKSessionActive,
   getActiveClaudeSDKSessions,
   reconnectSessionWriter,

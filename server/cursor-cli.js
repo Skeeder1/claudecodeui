@@ -329,9 +329,18 @@ function getActiveCursorSessions() {
   return Array.from(activeCursorProcesses.keys());
 }
 
+function abortAllCursorSessions() {
+  const keys = Array.from(activeCursorProcesses.keys());
+  for (const sessionId of keys) {
+    try { abortCursorSession(sessionId); } catch { }
+  }
+  return keys.length;
+}
+
 export {
   spawnCursor,
   abortCursorSession,
+  abortAllCursorSessions,
   isCursorSessionActive,
   getActiveCursorSessions
 };

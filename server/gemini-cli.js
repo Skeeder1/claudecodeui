@@ -615,9 +615,18 @@ function getActiveGeminiSessions() {
     return Array.from(activeGeminiProcesses.keys());
 }
 
+function abortAllGeminiSessions() {
+    const keys = Array.from(activeGeminiProcesses.keys());
+    for (const sessionId of keys) {
+        try { abortGeminiSession(sessionId); } catch { }
+    }
+    return keys.length;
+}
+
 export {
     spawnGemini,
     abortGeminiSession,
+    abortAllGeminiSessions,
     isGeminiSessionActive,
     getActiveGeminiSessions
 };
