@@ -83,6 +83,11 @@ export default function SidebarFavoritesList({
           projectListProps.onSessionSelect(session, projectId);
         };
 
+        const favoriteSessionIds = new Set(group.sessions.map((s) => s.sessionId));
+        const favoriteSessions = projectListProps
+          .getProjectSessions(project)
+          .filter((s) => favoriteSessionIds.has(s.id));
+
         return (
           <SidebarProjectItem
             key={project.projectId}
@@ -94,7 +99,7 @@ export default function SidebarFavoritesList({
             isStarred={projectListProps.isProjectStarred(project.projectId)}
             editingProject={projectListProps.editingProject}
             editingName={projectListProps.editingName}
-            sessions={projectListProps.getProjectSessions(project)}
+            sessions={favoriteSessions}
             initialSessionsLoaded={projectListProps.initialSessionsLoaded.has(project.projectId)}
             isLoadingMoreSessions={projectListProps.loadingMoreProjects.has(project.projectId)}
             currentTime={projectListProps.currentTime}
