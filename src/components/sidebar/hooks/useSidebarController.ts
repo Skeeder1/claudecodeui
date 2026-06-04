@@ -713,7 +713,7 @@ export function useSidebarController({
           const t = raw
             ? new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime()
             : 0;
-          if (isNaN(t) || NOW - t >= MS_24H) continue;
+          if (!isStarred && (isNaN(t) || NOW - t >= MS_24H)) continue;
           groupsByKey.get(key)!.sessions.push({ ...session, isStarred });
         }
       }
