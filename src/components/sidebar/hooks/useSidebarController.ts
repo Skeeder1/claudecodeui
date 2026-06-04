@@ -709,13 +709,12 @@ export function useSidebarController({
       }
       for (const session of group.sessions) {
         if (isStarred || !starredSessionIds.has(session.sessionId)) {
-          if (!isStarred) {
-            const raw = session.lastActivity;
-            const t = raw
-              ? new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime()
-              : 0;
-            if (isNaN(t) || NOW - t >= MS_24H) continue;
-          }
+          const raw = session.lastActivity;
+          const t = raw
+            ? new Date(raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`).getTime()
+            : 0;
+          // Apply 24h filter only for non-starred sessions
+          if (!isStarred && (isNaN(t) || NOW - t >= MS_24H)) continue;
           groupsByKey.get(key)!.sessions.push({ ...session, isStarred });
         }
       }

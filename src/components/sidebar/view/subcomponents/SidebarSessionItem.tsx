@@ -74,6 +74,7 @@ export default function SidebarSessionItem({
 }: SidebarSessionItemProps) {
   const sessionView = createSessionViewModel(session, t);
   const isSelected = selectedSession?.id === session.id;
+  const isEditing = editingSession === session.id;
   const compactSessionAge = formatCompactAge(sessionView.sessionTime, currentTime);
   const statusBarClass = status && status !== 'idle' ? STATUS_BAR_CLASS[status] : null;
   const handleToggleStar = (event: MouseEvent) => {
