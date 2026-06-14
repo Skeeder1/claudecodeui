@@ -256,10 +256,17 @@ export function handleChatConnection(
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[ERROR] Chat WebSocket error:', message);
-      writer.send({
-        type: 'error',
-        error: message,
-      });
+      // Use the normalized envelope (kind: 'error') so the message reaches the
+      // chat UI. The legacy { type: 'error', error } shape has no `kind` and was
+      // silently dropped by useChatRealtimeHandlers, leaving the user with a
+      // frozen spinner / "unknown error".
+      writer.send(
+        createNormalizedMessage({
+          kind: 'error',
+          content: message || 'Unknown error (no details)',
+          provider: 'claude',
+        })
+      );
     }
   });
 

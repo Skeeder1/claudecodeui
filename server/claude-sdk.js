@@ -44,7 +44,10 @@ function mapCliOptionsToSDK(options = {}) {
   // Use the tools preset to make all default built-in tools available.
   sdkOptions.tools = { type: 'preset', preset: 'claude_code' };
 
-  sdkOptions.disallowedTools = settings.disallowedTools || [];
+  // `settings` no longer exists since the permission UI was removed; source
+  // disallowedTools from the caller options (defaulting to none) to avoid a
+  // ReferenceError that aborted every Claude message send.
+  sdkOptions.disallowedTools = options.disallowedTools || [];
 
   // Map model (default to sonnet)
   // Valid models: sonnet, opus, haiku, opusplan, sonnet[1m]
@@ -566,7 +569,9 @@ async function queryClaudeSDK(command, options = {}, ws) {
     const installed = await providerAuthService.isProviderInstalled('claude');
     const errorContent = !installed
       ? 'Claude Code is not installed. Please install it first: https://docs.anthropic.com/en/docs/claude-code'
-      : error.message;
+      // Never send an empty content: non-Error throws have no `.message`, which
+      // would render as the bare "Unknown error" fallback in the chat UI.
+      : (error?.message || String(error) || 'Unknown error (no details)');
 
     // Send error to WebSocket
     ws.send(createNormalizedMessage({ kind: 'error', content: errorContent, sessionId: capturedSessionId || sessionId || null, provider: 'claude' }));

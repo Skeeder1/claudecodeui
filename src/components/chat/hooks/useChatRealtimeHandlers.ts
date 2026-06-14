@@ -156,6 +156,32 @@ export function useChatRealtimeHandlers({
           return;
         }
 
+        case 'error': {
+          // Safety net for any path still emitting the legacy { type: 'error', error }
+          // envelope (no `kind`). Surface it as a normalized error so it reaches the
+          // chat UI instead of being silently dropped by the default branch below.
+          const content =
+            (typeof msg.error === 'string' && msg.error)
+            || (typeof msg.content === 'string' && msg.content)
+            || 'Unknown error (no details)';
+          const errorSessionId =
+            (typeof msg.sessionId === 'string' && msg.sessionId) || activeViewSessionId;
+          if (errorSessionId) {
+            sessionStore.appendRealtime(errorSessionId, {
+              kind: 'error',
+              content,
+              sessionId: errorSessionId,
+            } as NormalizedMessage);
+          }
+          setIsLoading(false);
+          setCanAbortSession(false);
+          setClaudeStatus(null);
+          onSessionInactive?.(errorSessionId);
+          onSessionNotProcessing?.(errorSessionId);
+          pendingViewSessionRef.current = null;
+          return;
+        }
+
         default:
           // Unknown legacy message type — ignore
           return;
