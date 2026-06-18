@@ -44,6 +44,7 @@ type LatestChatMessage = {
   tokenBudget?: unknown;
   newSessionId?: string;
   aborted?: boolean;
+  permissionMode?: string;
 };
 
 type UseChatRealtimeHandlersArgs = {
@@ -65,6 +66,7 @@ type UseChatRealtimeHandlersArgs = {
   onSessionNotProcessing?: (sessionId?: string | null) => void;
   onNavigateToSession?: (sessionId: string, options?: SessionNavigationOptions) => void;
   onWebSocketReconnect?: () => void;
+  onPermissionModeChange?: (mode: string) => void;
   sessionStore: SessionStore;
 }
 
@@ -91,6 +93,7 @@ export function useChatRealtimeHandlers({
   onSessionNotProcessing,
   onNavigateToSession,
   onWebSocketReconnect,
+  onPermissionModeChange,
   sessionStore,
 }: UseChatRealtimeHandlersArgs) {
   const paletteOps = usePaletteOps();
@@ -333,7 +336,12 @@ export function useChatRealtimeHandlers({
       }
 
       case 'status': {
-        if (msg.text === 'token_budget' && msg.tokenBudget) {
+        if (msg.text === 'permission_mode') {
+          // Real permission mode echoed by the SDK — reconcile the composer badge.
+          if (typeof msg.permissionMode === 'string') {
+            onPermissionModeChange?.(msg.permissionMode);
+          }
+        } else if (msg.text === 'token_budget' && msg.tokenBudget) {
           setTokenBudget(msg.tokenBudget as Record<string, unknown>);
         } else if (msg.text) {
           setClaudeStatus({
@@ -371,6 +379,7 @@ export function useChatRealtimeHandlers({
     onSessionNotProcessing,
     onNavigateToSession,
     onWebSocketReconnect,
+    onPermissionModeChange,
     sessionStore,
     paletteOps,
   ]);

@@ -12,6 +12,11 @@ import { useDropzone } from 'react-dropzone';
 
 import { authenticatedFetch } from '../../../utils/api';
 import { thinkingModes } from '../constants/thinkingModes';
+import {
+  DEFAULT_PERMISSION_MODE,
+  isPermissionModeId,
+  type PermissionModeId,
+} from '../constants/permissionModes';
 import { safeLocalStorage } from '../utils/chatStorage';
 import type { ChatImage, ChatMessage } from '../types/types';
 import type { Project, ProjectSession, LLMProvider, ProviderModelsCacheInfo } from '../../../types/app';
@@ -193,6 +198,15 @@ export function useChatComposerState({
   const [imageErrors, setImageErrors] = useState<Map<string, string>>(new Map());
   const [isTextareaExpanded, setIsTextareaExpanded] = useState(false);
   const [thinkingMode, setThinkingMode] = useState('none');
+  const [permissionMode, setPermissionMode] = useState<PermissionModeId>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = safeLocalStorage.getItem('claude-permission-mode');
+      if (isPermissionModeId(saved)) {
+        return saved;
+      }
+    }
+    return DEFAULT_PERMISSION_MODE;
+  });
   const [commandModalPayload, setCommandModalPayload] = useState<CommandModalPayload | null>(null);
 
   const { isConnected } = useWebSocket();
@@ -644,8 +658,8 @@ export function useChatComposerState({
       const resolvedProjectPath = selectedProject.fullPath || selectedProject.path || '';
       const sessionSummary = getNotificationSessionSummary(selectedSession, currentInput);
 
-      // Permissions are fully delegated to the upstream CLI/SDK — we no longer send
-      // permissionMode, allowedTools, disallowedTools or skipPermissions from the UI.
+      // Claude gets the UI-selected permissionMode (plan/auto/bypassPermissions);
+      // the backend validates it. Other providers still delegate fully to their CLI.
       if (provider === 'cursor') {
         sendMessage({
           type: 'cursor-command',
@@ -714,6 +728,7 @@ export function useChatComposerState({
             model: claudeModel,
             sessionSummary,
             images: uploadedImages,
+            permissionMode,
           },
         });
       }
@@ -943,6 +958,37 @@ export function useChatComposerState({
     [onInputFocusChange],
   );
 
+  // User-initiated mode change: persist it and, if a query is currently running,
+  // switch it live via the SDK bridge so it takes effect immediately. Otherwise
+  // the mode is applied at the next message (claude-command options below).
+  const changePermissionMode = useCallback(
+    (mode: PermissionModeId) => {
+      setPermissionMode(mode);
+      safeLocalStorage.setItem('claude-permission-mode', mode);
+      const activeSessionId = currentSessionId || selectedSession?.id;
+      if (isLoading && activeSessionId) {
+        sendMessage({
+          type: 'sdk-bridge',
+          sessionId: activeSessionId,
+          action: 'setPermissionMode',
+          args: { mode },
+          requestId: `setmode-${Date.now()}`,
+        });
+      }
+    },
+    [currentSessionId, selectedSession?.id, isLoading, sendMessage],
+  );
+
+  // Reconcile the badge with the REAL mode echoed by the SDK (init / status).
+  // Only adopt modes the selector can represent; ignore others (e.g. a transient
+  // 'default' after ExitPlanMode) so the badge never shows an unselectable value.
+  const syncPermissionMode = useCallback((mode: string) => {
+    if (isPermissionModeId(mode)) {
+      setPermissionMode(mode);
+      safeLocalStorage.setItem('claude-permission-mode', mode);
+    }
+  }, []);
+
   return {
     input,
     setInput,
@@ -951,6 +997,9 @@ export function useChatComposerState({
     isTextareaExpanded,
     thinkingMode,
     setThinkingMode,
+    permissionMode,
+    onPermissionModeChange: changePermissionMode,
+    syncPermissionMode,
     slashCommandsCount,
     filteredCommands,
     frequentCommands,

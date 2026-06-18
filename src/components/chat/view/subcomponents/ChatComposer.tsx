@@ -18,7 +18,9 @@ import CommandMenu from './CommandMenu';
 import ClaudeStatus from './ClaudeStatus';
 import ImageAttachment from './ImageAttachment';
 import ThinkingModeSelector from './ThinkingModeSelector';
+import PermissionModeSelector from './PermissionModeSelector';
 import TokenUsageSummary from './TokenUsageSummary';
+import type { PermissionModeId } from '../../constants/permissionModes';
 import {
   PromptInput,
   PromptInputHeader,
@@ -52,6 +54,8 @@ type ChatComposerProps = {
   provider: Provider | string;
   thinkingMode: string;
   setThinkingMode: Dispatch<SetStateAction<string>>;
+  permissionMode: PermissionModeId;
+  onPermissionModeChange: (mode: PermissionModeId) => void;
   tokenBudget: Record<string, unknown> | null;
   slashCommandsCount: number;
   onToggleCommandMenu: () => void;
@@ -102,6 +106,8 @@ export default function ChatComposer({
   provider,
   thinkingMode,
   setThinkingMode,
+  permissionMode,
+  onPermissionModeChange,
   tokenBudget,
   slashCommandsCount,
   onToggleCommandMenu,
@@ -292,6 +298,10 @@ export default function ChatComposer({
 
             {provider === 'claude' && (
               <ThinkingModeSelector selectedMode={thinkingMode} onModeChange={setThinkingMode} onClose={() => {}} className="" />
+            )}
+
+            {provider === 'claude' && (
+              <PermissionModeSelector selectedMode={permissionMode} onModeChange={onPermissionModeChange} />
             )}
 
             <TokenUsageSummary usage={tokenBudget} />

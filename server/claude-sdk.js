@@ -17,6 +17,10 @@ import { createNormalizedMessage } from './shared/utils.js';
 
 const activeSessions = new Map();
 
+// Permission modes selectable from the UI. Restricted to those that work without
+// an interactive approval UI (the permission-prompt UI was removed in c63a10d).
+const UI_PERMISSION_MODES = new Set(['plan', 'auto', 'bypassPermissions']);
+
 function mapCliOptionsToSDK(options = {}) {
   const { sessionId, cwd } = options;
 
@@ -37,9 +41,17 @@ function mapCliOptionsToSDK(options = {}) {
     sdkOptions.cwd = cwd;
   }
 
-  // Permission management is delegated entirely to the Claude Code SDK/CLI.
-  // We always bypass the UI permission flow — no canUseTool callback, no 60s timeout.
-  sdkOptions.permissionMode = 'bypassPermissions';
+  // Permission mode comes from the UI selector. Only the modes that work without
+  // an interactive approval UI are allowed (the permission-prompt UI was removed):
+  //   - 'plan'              : no tool execution, produces a plan
+  //   - 'auto'              : SDK model-classifier decides approvals
+  //   - 'bypassPermissions' : run everything, no prompts (default fallback)
+  // Any unknown/unsafe value falls back to 'bypassPermissions'.
+  // NOTE: billing stays on the subscription pool via CLAUDE_CODE_ENTRYPOINT=cli
+  // (set above) + the logged-in CLI binary — permissionMode does not affect that.
+  sdkOptions.permissionMode = UI_PERMISSION_MODES.has(options.permissionMode)
+    ? options.permissionMode
+    : 'bypassPermissions';
 
   // Use the tools preset to make all default built-in tools available.
   sdkOptions.tools = { type: 'preset', preset: 'claude_code' };
@@ -485,6 +497,19 @@ async function queryClaudeSDK(command, options = {}, ws) {
         firstMessage = false;
         sendPhase('streaming', 'Streaming response...');
         console.log(`[claude-sdk] [${capturedSessionId || 'NEW'}] first message received (+${Date.now() - t0}ms)`);
+      }
+
+      // Forward the SDK's real permission mode so the UI badge reflects reality.
+      // System 'init' announces the active mode; 'status' announces mid-session
+      // changes (e.g. the SDK leaving plan mode after ExitPlanMode).
+      if (message.type === 'system' && typeof message.permissionMode === 'string') {
+        ws.send(createNormalizedMessage({
+          kind: 'status',
+          text: 'permission_mode',
+          permissionMode: message.permissionMode,
+          sessionId: capturedSessionId || sessionId || null,
+          provider: 'claude',
+        }));
       }
 
       // Capture session ID from first message

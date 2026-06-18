@@ -137,6 +137,9 @@ function ChatInterface({
     isTextareaExpanded,
     thinkingMode,
     setThinkingMode,
+    permissionMode,
+    onPermissionModeChange,
+    syncPermissionMode,
     slashCommandsCount,
     filteredCommands,
     frequentCommands,
@@ -242,6 +245,7 @@ function ChatInterface({
     onSessionNotProcessing,
     onNavigateToSession,
     onWebSocketReconnect: handleWebSocketReconnect,
+    onPermissionModeChange: syncPermissionMode,
     sessionStore,
   });
 
@@ -355,6 +359,8 @@ function ChatInterface({
           provider={provider}
           thinkingMode={thinkingMode}
           setThinkingMode={setThinkingMode}
+          permissionMode={permissionMode}
+          onPermissionModeChange={onPermissionModeChange}
           tokenBudget={tokenBudget}
           slashCommandsCount={slashCommandsCount}
           onToggleCommandMenu={handleToggleCommandMenu}
