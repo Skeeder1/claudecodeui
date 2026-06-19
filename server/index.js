@@ -26,6 +26,8 @@ import {
     isClaudeSDKSessionActive,
     getActiveClaudeSDKSessions,
     reconnectSessionWriter,
+    resolveToolApproval,
+    getPendingApprovalsForSession,
     executeSdkBridge,
 } from './claude-sdk.js';
 import {
@@ -118,6 +120,8 @@ const wss = createWebSocketServer(server, {
         isGeminiSessionActive,
         isOpenCodeSessionActive,
         reconnectSessionWriter,
+        resolveToolApproval,
+        getPendingApprovalsForSession,
         getActiveClaudeSDKSessions,
         getActiveCursorSessions,
         getActiveCodexSessions,

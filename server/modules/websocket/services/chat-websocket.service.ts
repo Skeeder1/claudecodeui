@@ -19,6 +19,17 @@ type ChatIncomingMessage = AnyRecord & {
 
 const DEFAULT_PROVIDER: LLMProvider = 'claude';
 
+type PendingApproval = {
+  requestId: string;
+  toolName: string;
+  input?: unknown;
+  suggestions?: unknown;
+  title?: string;
+  description?: string;
+  sessionId?: string | null;
+  receivedAt?: unknown;
+};
+
 type ChatWebSocketDependencies = {
   queryClaudeSDK: (command: string, options: unknown, writer: WebSocketWriter) => Promise<unknown>;
   spawnCursor: (command: string, options: unknown, writer: WebSocketWriter) => Promise<unknown>;
@@ -36,6 +47,8 @@ type ChatWebSocketDependencies = {
   isGeminiSessionActive: (sessionId: string) => boolean;
   isOpenCodeSessionActive: (sessionId: string) => boolean;
   reconnectSessionWriter: (sessionId: string, ws: WebSocket) => boolean;
+  resolveToolApproval: (requestId: string, decision: AnyRecord) => boolean;
+  getPendingApprovalsForSession: (sessionId: string) => PendingApproval[];
   getActiveClaudeSDKSessions: () => unknown;
   getActiveCursorSessions: () => unknown;
   getActiveCodexSessions: () => unknown;
@@ -146,6 +159,20 @@ export function handleChatConnection(
         return;
       }
 
+      if (messageType === 'permission-response') {
+        const requestId = typeof data.requestId === 'string' ? data.requestId : '';
+        const decisionRaw = typeof data.decision === 'string' ? data.decision : 'deny';
+        const decision =
+          decisionRaw === 'allow'
+            ? { allow: true }
+            : decisionRaw === 'always'
+              ? { allow: true, always: true }
+              : { allow: false, message: 'User denied tool use' };
+        const ok = requestId ? dependencies.resolveToolApproval(requestId, decision) : false;
+        writer.send({ type: 'permission-response-ack', requestId, ok });
+        return;
+      }
+
       if (messageType === 'abort-session') {
         const provider = readProvider(data.provider);
         const sessionId = typeof data.sessionId === 'string' ? data.sessionId : '';
@@ -209,6 +236,23 @@ export function handleChatConnection(
           isActive = dependencies.isClaudeSDKSessionActive(sessionId);
           if (isActive) {
             dependencies.reconnectSessionWriter(sessionId, ws);
+            // Re-emit any tool approvals still pending for this session so a
+            // re-opened app shows the prompt again (it waits indefinitely).
+            for (const req of dependencies.getPendingApprovalsForSession(sessionId)) {
+              writer.send(
+                createNormalizedMessage({
+                  kind: 'permission_request',
+                  provider: 'claude',
+                  requestId: req.requestId,
+                  toolName: req.toolName,
+                  input: req.input,
+                  suggestions: req.suggestions,
+                  title: req.title,
+                  description: req.description,
+                  sessionId: req.sessionId ?? sessionId,
+                })
+              );
+            }
           }
         }
 

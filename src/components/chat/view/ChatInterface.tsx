@@ -9,10 +9,12 @@ import { useChatProviderState } from '../hooks/useChatProviderState';
 import { useChatSessionState } from '../hooks/useChatSessionState';
 import { useChatRealtimeHandlers } from '../hooks/useChatRealtimeHandlers';
 import { useChatComposerState } from '../hooks/useChatComposerState';
+import { useChatPermissions } from '../hooks/useChatPermissions';
 import { useSessionStore } from '../../../stores/useSessionStore';
 
 import ChatMessagesPane from './subcomponents/ChatMessagesPane';
 import ChatComposer from './subcomponents/ChatComposer';
+import PermissionRequestsBanner from './subcomponents/PermissionRequestsBanner';
 import CommandResultModal from './subcomponents/CommandResultModal';
 
 
@@ -48,6 +50,13 @@ function ChatInterface({
   const { t } = useTranslation('chat');
 
   const sessionStore = useSessionStore();
+  const {
+    pendingPermissions,
+    addPermissionRequest,
+    removePermissionRequest,
+    clearPermissionRequests,
+    respondToPermission,
+  } = useChatPermissions(sendMessage);
   const streamTimerRef = useRef<number | null>(null);
   const accumulatedStreamRef = useRef('');
   const pendingViewSessionRef = useRef<PendingViewSession | null>(null);
@@ -246,8 +255,16 @@ function ChatInterface({
     onNavigateToSession,
     onWebSocketReconnect: handleWebSocketReconnect,
     onPermissionModeChange: syncPermissionMode,
+    onPermissionRequest: addPermissionRequest,
+    onPermissionCancelled: removePermissionRequest,
     sessionStore,
   });
+
+  // Drop any stale approval prompts when navigating to a different session — the
+  // backend re-emits the still-pending ones for the new session on reconnect.
+  useEffect(() => {
+    clearPermissionRequests();
+  }, [selectedSession?.id, clearPermissionRequests]);
 
   useEffect(() => {
     if (!isLoading || !canAbortSession) {
@@ -350,6 +367,14 @@ function ChatInterface({
           showRawParameters={showRawParameters}
           showThinking={showThinking}
           selectedProject={selectedProject}
+        />
+
+        <PermissionRequestsBanner
+          requests={pendingPermissions.filter((request) => {
+            const activeId = currentSessionId || selectedSession?.id || null;
+            return !request.sessionId || !activeId || request.sessionId === activeId;
+          })}
+          onRespond={respondToPermission}
         />
 
         <ChatComposer

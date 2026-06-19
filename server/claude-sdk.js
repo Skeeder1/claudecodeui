@@ -1,5 +1,6 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { promises as fs } from 'fs';
+import { randomUUID } from 'crypto';
 import path from 'path';
 import os from 'os';
 import { CLAUDE_FALLBACK_MODELS } from './modules/providers/list/claude/claude-models.provider.js';
@@ -17,9 +18,124 @@ import { createNormalizedMessage } from './shared/utils.js';
 
 const activeSessions = new Map();
 
-// Permission modes selectable from the UI. Restricted to those that work without
-// an interactive approval UI (the permission-prompt UI was removed in c63a10d).
+// Permission modes selectable from the UI.
+//   - 'plan'              : no tool execution, produces a plan
+//   - 'auto'              : SDK model-classifier auto-approves safe tools and
+//                           escalates risky ones to our canUseTool callback
+//   - 'bypassPermissions' : run everything, no prompts
 const UI_PERMISSION_MODES = new Set(['plan', 'auto', 'bypassPermissions']);
+
+// Human-in-the-loop tool approvals awaiting a user decision, keyed by requestId.
+// The interactive approval flow was removed in c63a10d and rebuilt here: it now
+// waits INDEFINITELY (no 60s auto-deny) and survives WebSocket reconnects so the
+// user can approve later by re-opening the app. "Always allow" is persisted
+// NATIVELY in Claude Code settings via the SDK's updatedPermissions (not a layer
+// on top of the CLI).
+const pendingToolApprovals = new Map();
+
+function createRequestId() {
+  try {
+    return randomUUID();
+  } catch {
+    return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+// Resolves only on an explicit user decision (resolveToolApproval) or a session
+// abort (context.signal). There is intentionally NO timer: the request waits
+// indefinitely so a closed app can be re-opened and the prompt answered.
+function waitForToolApproval(requestId, options = {}) {
+  const { signal, onCancel, metadata } = options;
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const cleanup = () => {
+      pendingToolApprovals.delete(requestId);
+      if (signal && abortHandler) {
+        signal.removeEventListener('abort', abortHandler);
+      }
+    };
+
+    const finalize = (decision) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(decision);
+    };
+
+    const abortHandler = () => {
+      onCancel?.('cancelled');
+      finalize({ cancelled: true });
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        onCancel?.('cancelled');
+        finalize({ cancelled: true });
+        return;
+      }
+      signal.addEventListener('abort', abortHandler, { once: true });
+    }
+
+    const resolver = (decision) => finalize(decision);
+    if (metadata) {
+      Object.assign(resolver, metadata);
+    }
+    pendingToolApprovals.set(requestId, resolver);
+  });
+}
+
+// Called from the WebSocket layer when the user clicks Accept / Always / Deny.
+function resolveToolApproval(requestId, decision) {
+  const resolver = pendingToolApprovals.get(requestId);
+  if (!resolver) return false;
+  resolver(decision);
+  return true;
+}
+
+// Used on reconnect to re-emit any still-pending prompts to the freshly
+// reconnected client (#462 behaviour, rebuilt).
+function getPendingApprovalsForSession(sessionId) {
+  const pending = [];
+  for (const [requestId, resolver] of pendingToolApprovals.entries()) {
+    if (resolver._sessionId === sessionId) {
+      pending.push({
+        requestId,
+        toolName: resolver._toolName || 'UnknownTool',
+        input: resolver._input,
+        suggestions: resolver._suggestions,
+        title: resolver._title,
+        description: resolver._description,
+        sessionId,
+        receivedAt: resolver._receivedAt || new Date(),
+      });
+    }
+  }
+  return pending;
+}
+
+// Derives a native Claude Code permission rule from a tool call so that
+// "Always allow" can be persisted as a real settings.json rule. Bash keeps a
+// command prefix (two words for git/npm-style multi-verb CLIs), other tools use
+// the bare tool name.
+function buildPermissionRule(toolName, input) {
+  if (toolName === 'Bash') {
+    let command = '';
+    if (typeof input === 'string') {
+      command = input.trim();
+    } else if (input && typeof input === 'object' && typeof input.command === 'string') {
+      command = input.command.trim();
+    }
+    const tokens = command.split(/\s+/).filter(Boolean);
+    if (tokens.length > 0) {
+      const TWO_WORD_CLIS = new Set(['git', 'npm', 'pnpm', 'yarn', 'docker', 'cargo', 'go', 'kubectl', 'sudo']);
+      const prefix = (TWO_WORD_CLIS.has(tokens[0]) && tokens[1]) ? `${tokens[0]} ${tokens[1]}` : tokens[0];
+      return { toolName: 'Bash', ruleContent: `${prefix}:*` };
+    }
+  }
+  return { toolName };
+}
 
 function mapCliOptionsToSDK(options = {}) {
   const { sessionId, cwd } = options;
@@ -449,13 +565,89 @@ async function queryClaudeSDK(command, options = {}, ws) {
       }]
     };
 
-    // Permissions are fully delegated to the Claude Code SDK/CLI via permissionMode:
-    // 'bypassPermissions'. No canUseTool callback is registered, so no UI prompt or
-    // 60s auto-deny is possible. The SDK handles tool execution natively.
+    // Human-in-the-loop tool approval. Registered for every mode but short-circuits
+    // to allow under bypassPermissions so that mode stays prompt-free. In 'auto'
+    // (and 'default') the SDK only invokes this for tools its classifier cannot
+    // safely auto-approve, so safe commands run silently and risky ones WAIT HERE —
+    // indefinitely — until the user clicks Accept / Always / Deny. This replaces the
+    // old 60s auto-deny that silently killed sessions.
+    sdkOptions.canUseTool = async (toolName, input, context) => {
+      if (sdkOptions.permissionMode === 'bypassPermissions') {
+        return { behavior: 'allow', updatedInput: input };
+      }
 
-    // Set stream-close timeout for interactive tools (Query constructor reads it synchronously). Claude Agent SDK has a default of 5s and this overrides it
+      const reqSessionId = capturedSessionId || sessionId || null;
+      const requestId = createRequestId();
+      const suggestions = Array.isArray(context?.suggestions) ? context.suggestions : [];
+      const title = typeof context?.title === 'string' ? context.title : undefined;
+      const description = typeof context?.description === 'string' ? context.description : undefined;
+
+      ws.send(createNormalizedMessage({
+        kind: 'permission_request',
+        requestId,
+        toolName,
+        input,
+        suggestions,
+        title,
+        description,
+        sessionId: reqSessionId,
+        provider: 'claude',
+      }));
+
+      emitNotification(createNotificationEvent({
+        provider: 'claude',
+        sessionId: reqSessionId,
+        kind: 'action_required',
+        code: 'permission.required',
+        meta: { toolName, sessionName: sessionSummary },
+        severity: 'warning',
+        requiresUserAction: true,
+        dedupeKey: `claude:permission:${reqSessionId || 'none'}:${requestId}`
+      }));
+
+      const decision = await waitForToolApproval(requestId, {
+        signal: context?.signal,
+        metadata: {
+          _sessionId: reqSessionId,
+          _toolName: toolName,
+          _input: input,
+          _suggestions: suggestions,
+          _title: title,
+          _description: description,
+          _receivedAt: new Date(),
+        },
+        onCancel: (reason) => {
+          ws.send(createNormalizedMessage({ kind: 'permission_cancelled', requestId, reason, sessionId: reqSessionId, provider: 'claude' }));
+        }
+      });
+
+      if (!decision || decision.cancelled) {
+        return { behavior: 'deny', message: 'Permission request cancelled' };
+      }
+
+      if (decision.allow) {
+        // "Always allow" → persist the rule NATIVELY in Claude Code settings via the
+        // SDK's updatedPermissions (written to .claude/settings.json), not a CloudCLI
+        // layer. Prefer the SDK's own suggestions; fall back to a derived rule.
+        if (decision.always) {
+          const updatedPermissions = suggestions.length > 0
+            ? suggestions.map((update) => ({ ...update, destination: 'projectSettings' }))
+            : [{ type: 'addRules', rules: [buildPermissionRule(toolName, input)], behavior: 'allow', destination: 'projectSettings' }];
+          return { behavior: 'allow', updatedInput: input, updatedPermissions };
+        }
+        return { behavior: 'allow', updatedInput: input };
+      }
+
+      return { behavior: 'deny', message: typeof decision.message === 'string' ? decision.message : 'User denied tool use' };
+    };
+
+    // Stream-close timeout: while a permission can be pending (any non-bypass mode)
+    // keep the turn open effectively forever so a pending approval survives an idle
+    // app/closed tab. Bypass mode keeps the prior 5-minute value. Query constructor
+    // reads this synchronously (SDK default is 5s).
     const prevStreamTimeout = process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
-    process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT = '300000';
+    process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT =
+      sdkOptions.permissionMode === 'bypassPermissions' ? '300000' : '2147483647';
 
     let queryInstance;
     try {
@@ -709,5 +901,7 @@ export {
   isClaudeSDKSessionActive,
   getActiveClaudeSDKSessions,
   reconnectSessionWriter,
+  resolveToolApproval,
+  getPendingApprovalsForSession,
   executeSdkBridge
 };

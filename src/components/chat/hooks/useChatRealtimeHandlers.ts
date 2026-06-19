@@ -21,6 +21,9 @@ type LatestChatMessage = {
   requestId?: string;
   toolName?: string;
   input?: unknown;
+  suggestions?: unknown;
+  title?: string;
+  description?: string;
   context?: unknown;
   error?: string;
   tool?: unknown;
@@ -67,6 +70,16 @@ type UseChatRealtimeHandlersArgs = {
   onNavigateToSession?: (sessionId: string, options?: SessionNavigationOptions) => void;
   onWebSocketReconnect?: () => void;
   onPermissionModeChange?: (mode: string) => void;
+  onPermissionRequest?: (request: {
+    requestId: string;
+    toolName: string;
+    input?: unknown;
+    suggestions?: unknown;
+    title?: string;
+    description?: string;
+    sessionId?: string | null;
+  }) => void;
+  onPermissionCancelled?: (requestId: string) => void;
   sessionStore: SessionStore;
 }
 
@@ -94,6 +107,8 @@ export function useChatRealtimeHandlers({
   onNavigateToSession,
   onWebSocketReconnect,
   onPermissionModeChange,
+  onPermissionRequest,
+  onPermissionCancelled,
   sessionStore,
 }: UseChatRealtimeHandlersArgs) {
   const paletteOps = usePaletteOps();
@@ -229,6 +244,32 @@ export function useChatRealtimeHandlers({
         sessionStore.finalizeStreaming(sid);
       }
       accumulatedStreamRef.current = '';
+      return;
+    }
+
+    // --- Permission approvals: transient UI, never persisted to the transcript ---
+    if (msg.kind === 'permission_request') {
+      const requestId = typeof msg.requestId === 'string' ? msg.requestId : '';
+      const toolName = typeof msg.toolName === 'string' ? msg.toolName : 'UnknownTool';
+      if (requestId) {
+        onPermissionRequest?.({
+          requestId,
+          toolName,
+          input: msg.input,
+          suggestions: msg.suggestions,
+          title: typeof msg.title === 'string' ? msg.title : undefined,
+          description: typeof msg.description === 'string' ? msg.description : undefined,
+          sessionId: sid,
+        });
+      }
+      return;
+    }
+
+    if (msg.kind === 'permission_cancelled') {
+      const requestId = typeof msg.requestId === 'string' ? msg.requestId : '';
+      if (requestId) {
+        onPermissionCancelled?.(requestId);
+      }
       return;
     }
 
@@ -380,6 +421,8 @@ export function useChatRealtimeHandlers({
     onNavigateToSession,
     onWebSocketReconnect,
     onPermissionModeChange,
+    onPermissionRequest,
+    onPermissionCancelled,
     sessionStore,
     paletteOps,
   ]);

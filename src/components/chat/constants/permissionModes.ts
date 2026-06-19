@@ -40,7 +40,10 @@ export const permissionModes: PermissionModeConfig[] = [
 
 export const PERMISSION_MODE_IDS: PermissionModeId[] = permissionModes.map((m) => m.id);
 
-export const DEFAULT_PERMISSION_MODE: PermissionModeId = 'bypassPermissions';
+// 'auto' lets the SDK classifier auto-approve safe tools and escalate risky ones
+// to the interactive approval banner (which waits indefinitely), giving
+// human-in-the-loop by default without blocking sessions.
+export const DEFAULT_PERMISSION_MODE: PermissionModeId = 'auto';
 
 export function isPermissionModeId(value: unknown): value is PermissionModeId {
   return typeof value === 'string' && PERMISSION_MODE_IDS.includes(value as PermissionModeId);

@@ -95,3 +95,21 @@ export type ChatInterfaceProps = {
   onTaskClick?: (...args: unknown[]) => void;
   onShowAllTasks?: (() => void) | null;
 }
+
+/**
+ * A tool-use permission request emitted by the Claude SDK (kind:
+ * 'permission_request') that is waiting for the user to Accept / Always / Deny.
+ * It waits indefinitely server-side and is re-emitted on reconnect.
+ */
+export interface PendingPermissionRequest {
+  requestId: string;
+  toolName: string;
+  input?: unknown;
+  suggestions?: unknown;
+  title?: string;
+  description?: string;
+  sessionId?: string | null;
+  receivedAt?: string | Date;
+}
+
+export type PermissionDecision = 'allow' | 'deny' | 'always';
