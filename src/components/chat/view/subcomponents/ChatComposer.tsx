@@ -3,13 +3,11 @@ import { useWebSocket } from '../../../../contexts/WebSocketContext';
 import type {
   ChangeEvent,
   ClipboardEvent,
-  Dispatch,
   FormEvent,
   KeyboardEvent,
   MouseEvent,
   ReactNode,
   RefObject,
-  SetStateAction,
   TouchEvent,
 } from 'react';
 import { ImageIcon, MessageSquareIcon, XIcon, ArrowDownIcon } from 'lucide-react';
@@ -53,7 +51,7 @@ type ChatComposerProps = {
   onAbortSession: () => void;
   provider: Provider | string;
   thinkingMode: string;
-  setThinkingMode: Dispatch<SetStateAction<string>>;
+  setThinkingMode: (mode: string) => void;
   permissionMode: PermissionModeId;
   onPermissionModeChange: (mode: PermissionModeId) => void;
   tokenBudget: Record<string, unknown> | null;

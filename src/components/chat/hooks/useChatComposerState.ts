@@ -197,7 +197,21 @@ export function useChatComposerState({
   const [uploadingImages, setUploadingImages] = useState<Map<string, number>>(new Map());
   const [imageErrors, setImageErrors] = useState<Map<string, string>>(new Map());
   const [isTextareaExpanded, setIsTextareaExpanded] = useState(false);
-  const [thinkingMode, setThinkingMode] = useState('none');
+  const [thinkingMode, setThinkingMode] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = safeLocalStorage.getItem('claude-thinking-mode');
+      const validIds = ['none', 'think', 'think-hard', 'think-harder', 'ultrathink'];
+      if (typeof saved === 'string' && validIds.includes(saved)) {
+        return saved;
+      }
+    }
+    return 'none';
+  });
+
+  const changeThinkingMode = useCallback((mode: string) => {
+    setThinkingMode(mode);
+    safeLocalStorage.setItem('claude-thinking-mode', mode);
+  }, []);
   const [permissionMode, setPermissionMode] = useState<PermissionModeId>(() => {
     if (typeof window !== 'undefined') {
       const saved = safeLocalStorage.getItem('claude-permission-mode');
@@ -996,7 +1010,7 @@ export function useChatComposerState({
     inputHighlightRef,
     isTextareaExpanded,
     thinkingMode,
-    setThinkingMode,
+    setThinkingMode: changeThinkingMode,
     permissionMode,
     onPermissionModeChange: changePermissionMode,
     syncPermissionMode,
